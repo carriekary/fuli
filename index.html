@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <title>小野字幕君</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        /* 基本重置 */
+        * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+        }
+        
+        html, body {
+          height: 100%;
+        }
+        
+        body {
+          font-family: Arial, sans-serif;
+          background: #fff;
+          color: #333;
+        }
+        
+        /* 整个页面容器 */
+        #app {
+          display: flex;
+          flex-direction: column;
+          height: 100vh;
+          width: 100%;
+          max-width: 600px; /* 在宽屏上限制页面最大宽度 */
+          margin: 0 auto;
+        }
+        
+        /* Header 区域调整 */
+        header {
+          background-color: #f5f5f5;
+          padding: 5px 10px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          flex-wrap: wrap;
+          gap: 10px;
+          font-size: clamp(12px, 2vw, 16px);
+        }
+        
+        #siteTitle {
+          font-size: clamp(14px, 3vw, 18px);
+          font-weight: bold;
+          flex: 1 1 auto;
+        }
+        
+        #controlsPanel {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          flex: 1 1 auto;
+          justify-content: flex-end;
+        }
+        
+        /* 控件样式 */
+        #controlsPanel input[type="text"] {
+          height: 28px;
+          padding: 2px 5px;
+          font-size: clamp(12px, 2vw, 14px);
+        }
+        
+        #controlsPanel button {
+          height: 28px;
+          padding: 0 8px;
+          font-size: clamp(12px, 2vw, 14px);
+        }
+        
+        #controlsPanel input[type="file"] {
+          height: 28px;
+        }
+        
+        /* 视频区域 – 保持 16:9 比例 */
+        #video-container {
+          width: 100%;
+          position: relative;
+          flex: 0 0 auto;
+        }
+        
+        /* 利用伪元素保持容器 16:9 比例 */
+        #video-container::before {
+          content: "";
+          display: block;
+          padding-bottom: 56.25%;
+        }
+        
+        #video-container iframe {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          border: none;
+        }
+        
+        /* 字幕区域 */
+        #subtitleContainer {
+          flex: 1 1 auto;
+          border: 1px solid #ccc;
+          overflow-y: auto;
+          padding: 10px;
+        }
+        
+        #subtitleContainer ul {
+          list-style: none;
+          padding: 0;
+          margin: 0;
+        }
+        
+        #subtitleContainer li {
+          padding: 8px;
+          cursor: pointer;
+          font-size: clamp(12px, 2vw, 14px);
+        }
+        
+        #subtitleContainer li:nth-child(odd) {
+          background-color: #fff;
+        }
+        
+        #subtitleContainer li:nth-child(even) {
+          background-color: #f0f0f0;
+        }
+        
+        #subtitleContainer li.active {
+          background-color: yellow;
+          font-weight: bold;
+        }
+    </style>
+    <!-- 引入 kuromoji.js 库，用于日语分词 -->
+    <script src="https://unpkg.com/kuromoji@0.1.2/dist/kuromoji.js"></script>
+</head>
+
+<body>
+    <div id="app">
+        <!-- Header 区域 -->
+        <header>
+            <div id="siteTitle">小野字幕君</div>
+            <div id="controlsPanel">
+                <input type="text" id="videoUrl" placeholder="视频链接" style="width: 120px;">
+                <button id="loadVideo">加载</button>
+                <!-- 合并的播放/暂停按钮 -->
+                <button id="toggleBtn">播放</button>
+                <input type="file" id="srtFile" accept=".srt,.ass">
+            </div>
+        </header>
+
+        <!-- 视频区域（16:9 比例） -->
+        <div id="video-container">
+            <iframe id="videoPlayer" src="https://i.taijuwang.com/" allowfullscreen></iframe>
+        </div>
+
+        <!-- 字幕区域 -->
+        <div id="subtitleContainer">
+            <ul id="subList"></ul>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let subtitles = [];
+        let timer = null;
+        let currentTime = 0;
+        const toggleBtn = document.getElementById('toggleBtn');
+        const subListUl = document.getElementById('subList');
+        
+        // 如果文本中含有“汉字(平假名)”格式，转换为 ruby 标签
+        function applyFurigana(text) {
+          return text.replace(/([\u4E00-\u9FFF]+)\(([\u3040-\u309F]+)\)/g,
+                               '<ruby>$1<rt>$2</rt></ruby>');
+        }
+        
+        // 判断文本中是否存在日语字符
+        function isJapanese(text) {
+          return /[\u3040-\u30FF\u4E00-\u9FFF]/.test(text);
+        }
+        
+        // 构建 tokenizer（全局只构建一次）
+        let tokenizerPromise = null;
+        function getTokenizer() {
+          if (!tokenizerPromise) {
+            tokenizerPromise = new Promise((resolve, reject) => {
+              kuromoji.builder({ dicPath: "https://unpkg.com/kuromoji@0.1.2/dict/" })
+                .build((err, tokenizer) => {
+                  if (err) reject(err);
+                  else resolve(tokenizer);
+                });
+            });
+          }
+          return tokenizerPromise;
+        }
+        
+        // 针对日语字幕进行分词，并添加 ruby 注音
+        async function addFurigana(text) {
+          try {
+            const tokenizer = await getTokenizer();
+            const tokens = tokenizer.tokenize(text);
+            let annotatedText = "";
+            tokens.forEach(token => {
+              if (/[一-龯]/.test(token.surface_form) && token.reading && token.reading !== token.surface_form) {
+                let hiragana = token.reading.replace(/[\u30a1-\u30f6]/g, ch =>
+                  String.fromCharCode(ch.charCodeAt(0) - 0x60)
+                );
+                annotatedText += `<ruby>${token.surface_form}<rt>${hiragana}</rt></ruby>`;
+              } else {
+                annotatedText += token.surface_form;
+              }
+            });
+            return annotatedText;
+          } catch (e) {
+            console.error("处理注音出错:", e);
+            return text;
+          }
+        }
+        
+        // 时间格式化函数
+        function formatTime(seconds) {
+          const minutes = Math.floor(seconds / 60);
+          const secs = (seconds % 60).toFixed(1);
+          return minutes + "分" + secs + "秒";
+        }
+        
+        // 解析 SRT 字幕文件
+        function parseSRT(data) {
+          data = data.replace(/^\uFEFF/, '').replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+          const regex = /(\d+)\n([\d:,]+)\s*-->\s*([\d:,]+)\n([\s\S]*?)(?=\n\n|$)/g;
+          let result;
+          const parsed = [];
+          
+          function timeStrToSeconds(timeStr) {
+            const parts = timeStr.split(',');
+            const [h, m, s] = parts[0].split(':');
+            return parseInt(h, 10) * 3600 +
+                   parseInt(m, 10) * 60 +
+                   parseInt(s, 10) +
+                   parseInt(parts[1], 10) / 1000;
+          }
+          
+          while ((result = regex.exec(data)) !== null) {
+            parsed.push({
+              index: parseInt(result[1], 10),
+              start: timeStrToSeconds(result[2]),
+              end: timeStrToSeconds(result[3]),
+              text: result[4].trim()
+            });
+          }
+          
+          return parsed;
+        }
+        
+        // ASS 字幕解析相关函数
+        function convertASSTimeToSeconds(timeStr) {
+          const parts = timeStr.split(':');
+          const h = parseInt(parts[0], 10);
+          const m = parseInt(parts[1], 10);
+          const s = parseFloat(parts[2]);
+          return h * 3600 + m * 60 + s;
+        }
+        
+        function parseASS(content) {
+          content = content.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+          const lines = content.split('\n');
+          const parsed = [];
+          lines.forEach(line => {
+            if (line.startsWith("Dialogue:") && line.trim() !== "") {
+              const dialogue = line.replace("Dialogue:", "").trim();
+              const parts = dialogue.split(',');
+              if (parts.length >= 10) {
+                const startTime = convertASSTimeToSeconds(parts[1].trim());
+                const endTime = convertASSTimeToSeconds(parts[2].trim());
+                const text = parts.slice(9).join(',').replace(/\\N/g, '<br>').replace(/\{.*?\}/g, '');
+                parsed.push({
+                  index: parsed.length + 1,
+                  start: startTime,
+                  end: endTime,
+                  text: text.trim()
+                });
+              }
+            }
+          });
+          return parsed;
+        }
+        
+        // 构建字幕列表，点击字幕可跳转
+        async function buildSubtitleList() {
+          subListUl.innerHTML = "";
+          for (const sub of subtitles) {
+            let annotatedText = "";
+            if (/([\u4E00-\u9FFF]+)\(([\u3040-\u309F]+)\)/.test(sub.text)) {
+              annotatedText = applyFurigana(sub.text);
+            } else if (isJapanese(sub.text)) {
+              annotatedText = await addFurigana(sub.text);
+            } else {
+              annotatedText = sub.text;
+            }
+            const li = document.createElement("li");
+            li.innerHTML = `${annotatedText} (${formatTime(sub.start)})`;
+            li.addEventListener("click", function() {
+              jumpToSubtitle(sub.start);
+            });
+            subListUl.appendChild(li);
+          }
+        }
+        
+        // 根据当前时间更新高亮字幕
+        function updateSubtitles() {
+          const displayTime = currentTime;
+          let activeFound = false;
+          for (let i = 0; i < subtitles.length; i++) {
+            const li = subListUl.children[i];
+            if (!activeFound && displayTime >= subtitles[i].start && displayTime <= subtitles[i].end) {
+              li.classList.add("active");
+              li.scrollIntoView({ block: "center", behavior: "smooth" });
+              activeFound = true;
+            } else {
+              li.classList.remove("active");
+            }
+          }
+        }
+        
+        // 模拟视频播放进度
+        function startTimer() {
+          timer = setInterval(function() {
+            currentTime += 0.1;
+            updateSubtitles();
+          }, 100);
+        }
+        
+        function stopTimer() {
+          clearInterval(timer);
+          timer = null;
+        }
+        
+        // 合并播放/暂停按钮的切换事件
+        toggleBtn.addEventListener("click", function() {
+          if (!timer) {
+            startTimer();
+            toggleBtn.textContent = "暂停";
+          } else {
+            stopTimer();
+            toggleBtn.textContent = "播放";
+          }
+        });
+        
+        // 点击字幕时手动跳转：同时暂停自动同步避免覆盖用户手动高亮
+        function jumpToSubtitle(time) {
+          if (timer) {
+            stopTimer();
+            toggleBtn.textContent = "播放";
+          }
+          currentTime = time;
+          updateSubtitles();
+        }
+        
+        // 字幕文件选择及解析（支持 SRT 与 ASS）
+        document.getElementById('srtFile').addEventListener('change', function(event) {
+          const file = event.target.files[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            const content = e.target.result;
+            if (file.name.endsWith('.ass')) {
+              subtitles = parseASS(content);
+            } else if (file.name.endsWith('.srt')) {
+              subtitles = parseSRT(content);
+            } else {
+              console.error("不支持的字幕文件格式！");
+              return;
+            }
+            if (subtitles.length === 0) {
+              console.error("未能解析字幕，请检查文件格式");
+            } else {
+              buildSubtitleList();
+            }
+          };
+          reader.onerror = function(e) {
+            console.error("读取文件出错：", e);
+          };
+          reader.readAsText(file, "UTF-8");
+        });
+        
+        // 视频播放链接解析函数
+        function getEmbedUrl(inputUrl) {
+          if (inputUrl.indexOf("player.bilibili.com") !== -1) {
+            return inputUrl;
+          }
+          if (inputUrl.indexOf("taijuwang.com") !== -1) {
+            return inputUrl;
+          }
+          if (inputUrl.indexOf("bilibili.com") !== -1) {
+            const bvidMatch = inputUrl.match(/\/(BV[\w\d]+)/);
+            if (bvidMatch && bvidMatch[1]) {
+              const bvid = bvidMatch[1];
+              return "https://player.bilibili.com/player.html?bvid=" + bvid + "&page=1";
+            }
+          }
+          if (inputUrl.indexOf("youtube.com") !== -1) {
+            try {
+              const urlObj = new URL(inputUrl);
+              const videoId = urlObj.searchParams.get("v");
+              if (videoId) return "https://www.youtube.com/embed/" + videoId;
+            } catch (e) {
+              console.error("Invalid YouTube URL", e);
+            }
+          }
+          if (inputUrl.indexOf("youtu.be") !== -1) {
+            const parts = inputUrl.split("/");
+            const videoId = parts[parts.length - 1];
+            if (videoId) return "https://www.youtube.com/embed/" + videoId;
+          }
+          return inputUrl;
+        }
+        
+        function updateVideo() {
+          const videoUrl = document.getElementById("videoUrl").value.trim();
+          if (videoUrl === "") {
+            alert("请输入有效的视频链接。");
+            return;
+          }
+          const embedUrl = getEmbedUrl(videoUrl);
+          document.getElementById("videoPlayer").src = embedUrl;
+        }
+        
+        document.getElementById("loadVideo").addEventListener("click", updateVideo);
+    </script>
+</body>
+
+</html>
