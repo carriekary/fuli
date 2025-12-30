@@ -14,13 +14,13 @@
 
     <style>
         :root {
-          --header-height: 100px;
+          --header-height: 120px;
           --accent: #355c7d;
           --subtitle-min-height: 30px;
-          --box-width: 600px; /* 统一框体宽度 */
           --gutter: 12px;
           --max-width: auto;
           --file-input-width: 200px;
+          --container-padding: 15px;
         }
         
         * {
@@ -88,7 +88,7 @@
         
         /* 主內容 */
         main {
-          padding: calc(var(--header-height) + 12px) 16px 140px;
+          padding: calc(var(--header-height) + 12px) var(--container-padding) 140px;
           max-width: var(--max-width);
           margin: 0 auto;
         }
@@ -128,15 +128,15 @@
           border-left: 4px solid #ff9800;
         }
         
-        /* 左側文字框 - 与笔记框同宽 */
+        /* 左側文字框 - 大屏幕时占一半宽度 */
         .text-box {
-          flex: 0 0 var(--box-width);
+          flex: 1; /* 占一半空间 */
           height: 35px;
           padding: 8px 12px;
           border-radius: 6px;
-          border: 1px solid #e0e0e0;
+          border: none;
           background: #f9f9f9;
-          font-size: 16px;
+          font-size: 15px;
           line-height: 1.4;
           color: #222;
           white-space: pre-wrap;
@@ -147,11 +147,11 @@
           overflow: hidden;
         }
         
-        /* 右側筆記框 - 与文字框同宽 */
+        /* 右側筆記框 - 大屏幕时占一半宽度 */
         .note-box {
-          flex: 0 0 var(--box-width);
+          flex: 1; /* 占一半空间 */
           height: 35px; /* 固定初始高度，只顯示一行 */
-          max-height: 100px;
+          max-height: 150px;
           padding: 8px 12px;
           border-radius: 6px;
           border: 1px solid #ddd;
@@ -277,32 +277,88 @@
           transition: width 0.3s ease;
         }
         
-        /* 響應式 */
+        /* 響應式設計 */
+        
+        /* 中等屏幕（900px-1200px）保持左右布局，各占一半 */
         @media (max-width: 1200px) {
           :root {
-            --box-width: 350px; /* 中等屏幕调整宽度 */
-          }
-        }
-        
-        @media (max-width: 900px) {
-          .subtitle {
-            flex-direction: column;
-            gap: 10px;
-            padding: 10px;
+            --container-padding: 12px;
           }
           
           .text-box,
           .note-box {
-            flex: 0 0 auto;
+            flex: 1; /* 仍然各占一半 */
+          }
+        }
+        
+        /* 小屏幕（600px-900px）改为上下布局 */
+        @media (max-width: 900px) {
+          :root {
+            --header-height: 130px; /* 增加header高度 */
+          }
+          
+          /* header在小屏幕下改為垂直佈局 */
+          .header {
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: center;
+            padding: 12px 16px;
+            height: var(--header-height);
+          }
+          
+          .header-left {
             width: 100%;
+            margin-bottom: 10px;
+          }
+          
+          .header-left h1 {
+            font-size: 18px;
+            line-height: 1.2;
+          }
+          
+          .header-left p {
+            font-size: 11px;
+            line-height: 1.3;
+          }
+          
+          .file-search-container {
+            width: 100%;
+            justify-content: space-between;
+            gap: 8px;
+          }
+          
+          #fileInput {
+            flex: 1;
+            min-width: 0; /* 允許縮小 */
+            font-size: 12px;
+            padding: 6px 4px;
           }
           
           .search-box {
-            width: 140px;
+            flex: 1;
+            min-width: 0; /* 允許縮小 */
+            width: auto;
+            font-size: 12px;
           }
           
+          /* 主內容調整 */
           main {
+            padding-top: calc(var(--header-height) + 16px);
             padding-bottom: 180px;
+          }
+          
+          /* 字幕框改为上下布局 */
+          .subtitle {
+            flex-direction: column; /* 改为垂直布局 */
+            gap: 10px;
+            padding: 10px;
+          }
+          
+          /* 文字框和笔记框在小屏幕上各占100%宽度 */
+          .text-box,
+          .note-box {
+            flex: 0 0 auto; /* 取消flex增长 */
+            width: 100%; /* 占满宽度 */
           }
           
           .note-box {
@@ -310,9 +366,126 @@
           }
         }
         
+        /* 超小屏幕（600px以下）进一步优化 */
         @media (max-width: 600px) {
           :root {
-            --box-width: 100%; /* 小屏幕使用100%宽度 */
+            --header-height: 150px; /* 進一步增加header高度 */
+          }
+          
+          .header {
+            padding: 10px 12px;
+          }
+          
+          .file-search-container {
+            flex-direction: column;
+            gap: 6px;
+            align-items: stretch;
+          }
+          
+          #fileInput, 
+          .search-box {
+            width: 100%;
+            flex: none;
+          }
+          
+          .header-left h1 {
+            font-size: 16px;
+          }
+          
+          .header-left p {
+            font-size: 10px;
+          }
+          
+          /* 調整全局狀態指示器位置 */
+          .global-status {
+            top: calc(var(--header-height) + 5px);
+            right: 10px;
+            left: 10px;
+            text-align: center;
+          }
+          
+          /* 調整文件信息位置 */
+          .file-info {
+            left: 10px;
+            right: 10px;
+            bottom: 70px;
+            max-width: none;
+          }
+          
+          /* 調整導出按鈕位置 */
+          .export-btn {
+            left: 10px;
+            right: 10px;
+            bottom: 10px;
+            width: calc(100% - 20px);
+            text-align: center;
+          }
+        }
+        
+        /* 橫向屏幕優化 */
+        @media (max-width: 900px) and (orientation: landscape) {
+          :root {
+            --header-height: 90px;
+          }
+          
+          .header {
+            flex-direction: row;
+            align-items: center;
+          }
+          
+          .header-left {
+            width: auto;
+            margin-bottom: 0;
+            margin-right: 10px;
+            flex-shrink: 0;
+          }
+          
+          .file-search-container {
+            flex: 1;
+            flex-direction: row;
+          }
+          
+          .header-left h1 {
+            font-size: 16px;
+          }
+          
+          .header-left p {
+            font-size: 10px;
+          }
+          
+          /* 在横屏模式下，如果宽度足够，保持左右布局 */
+          .subtitle {
+            flex-direction: row; /* 横屏时恢复左右布局 */
+          }
+          
+          .text-box,
+          .note-box {
+            flex: 1; /* 各占一半 */
+          }
+        }
+        
+        /* 確保文件輸入框在小屏幕上可點擊 */
+        #fileInput {
+          cursor: pointer;
+          font-size: 13px;
+        }
+        
+        #fileInput::-webkit-file-upload-button {
+          cursor: pointer;
+        }
+        
+        /* 優化觸摸設備體驗 */
+        @media (hover: none) and (pointer: coarse) {
+          .note-box {
+            min-height: 44px; /* 滿足最小觸摸目標尺寸 */
+          }
+          
+          .text-box {
+            min-height: 44px; /* 滿足最小觸摸目標尺寸 */
+          }
+          
+          .export-btn {
+            min-height: 44px;
           }
         }
     </style>
@@ -804,63 +977,63 @@
         });
         
         // ==================== 搜索功能 ====================
-       // 将我的搜索函数替换为您的逻辑，但保留选择器适配
-document.getElementById('searchBox').addEventListener('input', function(){
-  const q = this.value.trim();
-  const rows = Array.from(document.querySelectorAll('.row'));
-  
-  if (!q) {
-    // 清空搜索，恢复所有行
-    rows.forEach(row => {
-      const textDiv = row.querySelector('.subtitle .text-box'); // 改为 .text-box
-      if (textDiv && textDiv.dataset.original) {
+               // 将我的搜索函数替换为您的逻辑，但保留选择器适配
+        document.getElementById('searchBox').addEventListener('input', function(){
+          const q = this.value.trim();
+          const rows = Array.from(document.querySelectorAll('.row'));
+          
+          if (!q) {
+            // 清空搜索，恢复所有行
+            rows.forEach(row => {
+              const textDiv = row.querySelector('.subtitle .text-box'); // 改为 .text-box
+              if (textDiv && textDiv.dataset.original) {
         textDiv.innerHTML = escapeHtml(textDiv.dataset.original);
-      }
-      row.style.display = '';
-    });
-    // 隐藏搜索统计
-    const stats = document.getElementById('searchStats');
-    if (stats) stats.classList.remove('show');
-    return;
-  }
-  
-  const regex = new RegExp('(' + escapeRegExp(q) + ')', 'gi');
-  let matchCount = 0;
-  let firstMatch = null;
-  
-  rows.forEach((row, idx) => {
-    const textDiv = row.querySelector('.subtitle .text-box'); // 改为 .text-box
-    if (!textDiv) return;
-    
-    const original = textDiv.dataset.original || textDiv.textContent || '';
-    
-    if (original.match(regex)) {
-      textDiv.innerHTML = escapeHtml(original).replace(regex, '<span class="highlight">$1</span>');
-      row.style.display = '';
-      matchCount++;
-      
-      if (firstMatch === null) {
+              }
+              row.style.display = '';
+            });
+            // 隐藏搜索统计
+            const stats = document.getElementById('searchStats');
+            if (stats) stats.classList.remove('show');
+            return;
+          }
+          
+          const regex = new RegExp('(' + escapeRegExp(q) + ')', 'gi');
+          let matchCount = 0;
+          let firstMatch = null;
+          
+          rows.forEach((row, idx) => {
+            const textDiv = row.querySelector('.subtitle .text-box'); // 改为 .text-box
+            if (!textDiv) return;
+            
+            const original = textDiv.dataset.original || textDiv.textContent || '';
+            
+            if (original.match(regex)) {
+              textDiv.innerHTML = escapeHtml(original).replace(regex, '<span class="highlight">$1</span>');
+              row.style.display = '';
+              matchCount++;
+              
+              if (firstMatch === null) {
         firstMatch = row;
-      }
-      
-      // 滚动到第一个匹配项
-      if (idx === 0) {
+              }
+              
+              // 滚动到第一个匹配项
+              if (idx === 0) {
         setTimeout(() => {
           row.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }, 100);
-      }
-    } else {
-      row.style.display = 'none';
-    }
-  });
-  
-  // 显示搜索统计（我的版本的功能）
-  if (matchCount > 0) {
-    showSearchStats(`找到 ${matchCount} 個匹配結果`, 3000);
-  } else if (q) {
-    showSearchStats(`未找到匹配內容`, 2000);
-  }
-});
+              }
+            } else {
+              row.style.display = 'none';
+            }
+          });
+          
+          // 显示搜索统计（我的版本的功能）
+          if (matchCount > 0) {
+            showGlobalStatus(`找到 ${matchCount} 個匹配結果`, 3000);
+          } else if (q) {
+            showGlobalStatus(`未找到匹配內容`, 2000);
+          }
+        });
         
         // ==================== 導出功能 ====================
         document.getElementById('exportBtn').addEventListener('click', function() {
