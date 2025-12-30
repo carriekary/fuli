@@ -804,51 +804,63 @@
         });
         
         // ==================== 搜索功能 ====================
-        document.getElementById('searchBox').addEventListener('input', debounce(function() {
-          const query = this.value.trim();
-          const rows = document.querySelectorAll('.row');
-          
-          if (!query) {
-            rows.forEach(row => {
-              const textBox = row.querySelector('.text-box');
-              if (textBox && textBox.dataset.original) {
-                textBox.textContent = textBox.dataset.original;
-              }
-              row.style.display = '';
-            });
-            return;
-          }
-          
-          const regex = new RegExp('(' + escapeRegExp(query) + ')', 'gi');
-          let firstMatch = null;
-          let matchCount = 0;
-          
-          rows.forEach(row => {
-            const textBox = row.querySelector('.text-box');
-            if (!textBox) return;
-            
-            const original = textBox.dataset.original || textBox.textContent || '';
-            
-            if (original.match(regex)) {
-              textBox.innerHTML = escapeHtml(original).replace(regex, '<span class="highlight">$1</span>');
-              row.style.display = '';
-              matchCount++;
-              
-              if (firstMatch === null) {
-                firstMatch = row;
-              }
-            } else {
-              row.style.display = 'none';
-            }
-          });
-          
-          if (firstMatch) {
-            firstMatch.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            showGlobalStatus(`找到 ${matchCount} 個匹配結果`, 2000);
-          } else if (query) {
-            showGlobalStatus(`未找到匹配內容`, 2000);
-          }
-        }, 300));
+       // 将我的搜索函数替换为您的逻辑，但保留选择器适配
+document.getElementById('searchBox').addEventListener('input', function(){
+  const q = this.value.trim();
+  const rows = Array.from(document.querySelectorAll('.row'));
+  
+  if (!q) {
+    // 清空搜索，恢复所有行
+    rows.forEach(row => {
+      const textDiv = row.querySelector('.subtitle .text-box'); // 改为 .text-box
+      if (textDiv && textDiv.dataset.original) {
+        textDiv.innerHTML = escapeHtml(textDiv.dataset.original);
+      }
+      row.style.display = '';
+    });
+    // 隐藏搜索统计
+    const stats = document.getElementById('searchStats');
+    if (stats) stats.classList.remove('show');
+    return;
+  }
+  
+  const regex = new RegExp('(' + escapeRegExp(q) + ')', 'gi');
+  let matchCount = 0;
+  let firstMatch = null;
+  
+  rows.forEach((row, idx) => {
+    const textDiv = row.querySelector('.subtitle .text-box'); // 改为 .text-box
+    if (!textDiv) return;
+    
+    const original = textDiv.dataset.original || textDiv.textContent || '';
+    
+    if (original.match(regex)) {
+      textDiv.innerHTML = escapeHtml(original).replace(regex, '<span class="highlight">$1</span>');
+      row.style.display = '';
+      matchCount++;
+      
+      if (firstMatch === null) {
+        firstMatch = row;
+      }
+      
+      // 滚动到第一个匹配项
+      if (idx === 0) {
+        setTimeout(() => {
+          row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 100);
+      }
+    } else {
+      row.style.display = 'none';
+    }
+  });
+  
+  // 显示搜索统计（我的版本的功能）
+  if (matchCount > 0) {
+    showSearchStats(`找到 ${matchCount} 個匹配結果`, 3000);
+  } else if (q) {
+    showSearchStats(`未找到匹配內容`, 2000);
+  }
+});
         
         // ==================== 導出功能 ====================
         document.getElementById('exportBtn').addEventListener('click', function() {
