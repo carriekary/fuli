@@ -118,6 +118,7 @@
           align-items: stretch; /* 确保子元素等高 */
           border: 1px solid rgba(0, 0, 0, 0.05);
           transition: all 0.2s ease;
+          position: relative; /* 为迷你加号按钮定位 */
         }
         
         .subtitle:hover {
@@ -137,7 +138,7 @@
           border: none;
           background: #f9f9f9;
           font-size: 15px;
-          line-height: 1.4;
+          line-height: 1;
           color: #222;
           white-space: pre-wrap;
           word-break: break-word;
@@ -145,13 +146,61 @@
           align-items: center;
           box-sizing: border-box;
           overflow: hidden;
+          cursor: pointer;
+          user-select: text;
         }
         
-        /* 右側筆記框 - 大屏幕时占一半宽度 */
+        /* 右側區域 */
+        .note-area {
+          display: flex;
+          flex-direction: row;
+          align-items: center;
+          gap: 8px;
+          position: relative;
+          min-width: 0; /* 允許在無筆記時收縮 */
+        }
+        
+        /* 加號按鈕 */
+        .add-note-btn {
+          width: 30px;
+          height: 30px;
+          border-radius: 50%;
+          border: 1px solid #ddd;
+          background: #fff;
+          color: #666;
+          font-size: 18px;
+          font-weight: bold;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.2s ease;
+          flex-shrink: 0;
+        }
+        
+        .add-note-btn:hover {
+          background: #f5f5f5;
+          border-color: #aaa;
+        }
+        
+        /* 筆記框容器 */
+        .note-container {
+          flex: 1;
+          display: none; /* 預設隱藏 */
+          align-items: center;
+          min-width: 0; /* 允許收縮 */
+        }
+        
+        /* 有筆記時顯示筆記框容器 */
+        .note-container.has-note {
+          display: flex;
+        }
+        
+        /* 筆記框 */
         .note-box {
-          flex: 1; /* 占一半空间 */
-          height: 35px; /* 固定初始高度，只顯示一行 */
-          max-height: 150px;
+          width: 550px;
+          height: 35px; /* 固定初始高度 */
+          max-height: 200px;
           padding: 8px 12px;
           border-radius: 6px;
           border: 1px solid #ddd;
@@ -163,7 +212,20 @@
           resize: vertical;
           font-family: inherit;
           transition: all 0.2s ease;
-          overflow-y: hidden; /* 初始隱藏滾動條 */
+          overflow-y: auto; /* 允許滾動 */
+          display: none; /* 預設隱藏 */
+        }
+        
+        /* 顯示筆記框 */
+        .note-box.show {
+          display: block;
+        }
+        
+        /* 筆記框被激活（點開過） */
+        .note-box.activated {
+          /* 有特殊的視覺提示 */
+          border-color: #4CAF50;
+          box-shadow: 0 0 0 1px rgba(76, 175, 80, 0.3);
         }
         
         /* 筆記有內容時的樣式 */
@@ -186,6 +248,35 @@
         .note-box.has-content:focus {
           background: #fff;
           color: #333;
+        }
+        
+        /* 關閉按鈕 */
+        .close-note-btn {
+          width: 24px;
+          height: 24px;
+          border-radius: 50%;
+          border: 1px solid #ddd;
+          background: #fff;
+          color: #999;
+          font-size: 14px;
+          cursor: pointer;
+          display: none; /* 預設隱藏 */
+          align-items: center;
+          justify-content: center;
+          transition: all 0.2s ease;
+          flex-shrink: 0;
+          margin-left: 8px;
+        }
+        
+        .close-note-btn:hover {
+          background: #f5f5f5;
+          color: #666;
+          border-color: #aaa;
+        }
+        
+        /* 顯示關閉按鈕 */
+        .close-note-btn.show {
+          display: flex;
         }
         
         /* 文件信息 */
@@ -217,11 +308,18 @@
           font-size: 14px;
         }
         
-        /* 匯出按鈕 */
-        .export-btn {
+        /* 按鈕容器 */
+        .button-container {
           position: fixed;
           bottom: 20px;
           right: 20px;
+          display: flex;
+          gap: 10px;
+          z-index: 100;
+        }
+        
+        /* 匯出按鈕 */
+        .export-btn {
           background: var(--accent);
           color: white;
           border: none;
@@ -229,13 +327,32 @@
           border-radius: 6px;
           cursor: pointer;
           font-size: 14px;
-          z-index: 100;
           box-shadow: 0 2px 8px rgba(0,0,0,0.2);
           transition: all 0.2s ease;
+          min-width: 90px;
         }
         
         .export-btn:hover {
           background: #2a4a6a;
+          transform: translateY(-1px);
+        }
+        
+        /* 導入按鈕 */
+        .import-btn {
+          background: #28a745;
+          color: white;
+          border: none;
+          padding: 10px 16px;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 14px;
+          transition: all 0.2s ease;
+          min-width: 90px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        
+        .import-btn:hover {
+          background: #218838;
           transform: translateY(-1px);
         }
         
@@ -285,13 +402,12 @@
             --container-padding: 12px;
           }
           
-          .text-box,
-          .note-box {
+          .text-box {
             flex: 1; /* 仍然各占一半 */
           }
         }
         
-        /* 小屏幕（600px-900px）改为上下布局 */
+        /* 小屏幕（600px-900px）优化文字框视觉平衡 */
         @media (max-width: 900px) {
           :root {
             --header-height: 130px; /* 增加header高度 */
@@ -347,22 +463,181 @@
             padding-bottom: 180px;
           }
           
-          /* 字幕框改为上下布局 */
+          /* 字幕框在小屏幕上保持水平布局，但調整內部結構 */
           .subtitle {
-            flex-direction: column; /* 改为垂直布局 */
-            gap: 10px;
-            padding: 10px;
+            flex-direction: row; /* 保持水平布局 */
+            gap: 8px;
+            padding: 8px 10px;
+            position: relative; /* 為迷你加號按鈕定位 */
+            /* 减轻阴影效果 */
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+            border: 1px solid rgba(0, 0, 0, 0.08);
           }
           
-          /* 文字框和笔记框在小屏幕上各占100%宽度 */
-          .text-box,
-          .note-box {
-            flex: 0 0 auto; /* 取消flex增长 */
-            width: 100%; /* 占满宽度 */
+          /* 文字框在小屏幕上優化視覺平衡 */
+          .text-box {
+            flex: 1; /* 佔用可用空間 */
+            min-width: 0;
+            padding-right: 28px; /* 為迷你加號按鈕留出空間 */
+            /* 減輕視覺重量 */
+            background: #fdfdfd; /* 更接近白色 */
+            border: 1px solid rgba(0, 0, 0, 0.1); /* 增加細邊框 */
+            border-radius: 5px;
+            padding: 6px 10px; /* 調整內邊距 */
+            height: 30px;
+            font-size: 15px; /* 稍微減小字體 */
+            line-height: 1.35;
+            color: #333;
+            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05); /* 內陰影 */
+            transition: all 0.2s ease;
           }
           
+          .text-box:hover {
+            background: #fafafa;
+            border-color: rgba(0, 0, 0, 0.15);
+          }
+          
+          /* 右側區域 - 默認隱藏筆記框部分 */
+          .note-area {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 6px;
+            min-width: 0;
+          }
+          
+          /* 迷你加號按鈕 - 調整為更輕量 */
+          .add-note-btn {
+            display: flex; /* 顯示迷你加號 */
+            width: 22px; /* 稍微減小 */
+            height: 22px;
+            border-radius: 50%;
+            border: 1px solid #ccc; /* 更淺的邊框 */
+            background: #fff;
+            color: #888; /* 更淺的顏色 */
+            font-size: 14px; /* 減小字體 */
+            font-weight: normal; /* 正常字重 */
+            cursor: pointer;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+            position: absolute;
+            right: 10px; /* 調整位置 */
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 1;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1); /* 輕微陰影 */
+          }
+          
+          .add-note-btn:hover {
+            background: #f8f8f8;
+            border-color: #999;
+            color: #666;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+          }
+          
+          /* 筆記框容器 - 默認隱藏 */
+          .note-container {
+            display: none;
+            width: 0;
+            overflow: hidden;
+            transition: width 0.3s ease;
+          }
+          
+          /* 有筆記時顯示筆記框容器 */
+          .note-container.has-note {
+            display: flex;
+            width: 100%; /* 佔用完整寬度 */
+          }
+          
+          /* 筆記框 - 調整為更輕量 */
           .note-box {
-            max-height: 200px;
+            width: 100%;
+            height: 30px; /* 稍微減小高度 */
+            max-height: 150px;
+            padding: 6px 10px; /* 調整內邊距 */
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            background: #fff;
+            font-size: 12px; /* 稍微減小字體 */
+            line-height: 1;
+            color: #333;
+            box-sizing: border-box;
+            resize: vertical;
+            font-family: inherit;
+            transition: all 0.2s ease;
+            overflow-y: auto;
+            display: none; /* 默認隱藏 */
+          }
+          
+          /* 顯示筆記框 */
+          .note-box.show {
+            display: block;
+          }
+          
+          /* 關閉按鈕 - 調整為更輕量 */
+          .close-note-btn {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            border: 1px solid #ddd;
+            background: #fff;
+            color: #999;
+            font-size: 13px;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+            margin-left: 6px;
+          }
+          
+          .close-note-btn.show {
+            display: flex;
+          }
+          
+          /* 小屏幕時如果有筆記，調整布局為上下 */
+          .subtitle.has-note {
+            flex-direction: column; /* 改為垂直布局 */
+            gap: 8px;
+          }
+          
+          .subtitle.has-note .text-box {
+            padding-right: 10px; /* 移除迷你加號的右邊距 */
+            width: 100%;
+          }
+          
+          .subtitle.has-note .add-note-btn {
+            display: none; /* 有筆記時隱藏迷你加號 */
+          }
+          
+          .subtitle.has-note .note-area {
+            width: 100%;
+            justify-content: space-between;
+          }
+          
+          .subtitle.has-note .note-container {
+            flex: 1;
+          }
+          
+          /* 調整按鈕容器位置 */
+          .button-container {
+            bottom: 10px;
+            right: 10px;
+            left: 10px;
+            justify-content: center;
+            gap: 8px; /* 小屏幕下减小按钮间距 */
+          }
+          
+          /* 在小屏幕下缩小按钮尺寸到原来的3/4 */
+          .import-btn,
+          .export-btn {
+            padding: 7.5px 12px; /* 原来是10px 16px，缩小到3/4 */
+            font-size: 10.5px; /* 原来是14px，缩小到3/4 */
+            min-width: 67.5px; /* 原来是90px，缩小到3/4 */
+            box-shadow: 0 1px 6px rgba(0,0,0,0.15); /* 调整阴影 */
           }
         }
         
@@ -396,12 +671,38 @@
             font-size: 10px;
           }
           
+          /* 超小屏幕下進一步減輕文字框視覺重量 */
+          .text-box {
+            padding: 5px 8px;
+            font-size: 13px;
+            height: 25px;
+            line-height: 1;
+            border-color: rgba(0, 0, 0, 0.08);
+            box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.04);
+          }
+          
+          .subtitle {
+            padding: 6px 8px;
+            margin-bottom: 4px;
+          }
+          
+          /* 超小屏幕下迷你加號更小更輕 */
+          .add-note-btn {
+            width: 20px;
+            height: 20px;
+            font-size: 12px;
+            right: 8px;
+            border-width: 0.5px;
+          }
+          
           /* 調整全局狀態指示器位置 */
           .global-status {
             top: calc(var(--header-height) + 5px);
             right: 10px;
             left: 10px;
             text-align: center;
+            padding: 5px 8px;
+            font-size: 10.5px; /* 也相应缩小 */
           }
           
           /* 調整文件信息位置 */
@@ -410,15 +711,28 @@
             right: 10px;
             bottom: 70px;
             max-width: none;
+            font-size: 10.5px; /* 相应缩小字体 */
+            padding: 6px 9px; /* 缩小内边距 */
           }
           
-          /* 調整導出按鈕位置 */
-          .export-btn {
+          /* 調整按鈕容器位置 */
+          .button-container {
+            flex-direction: column;
+            gap: 6px; /* 进一步减小按钮间距 */
+            bottom: 10px;
             left: 10px;
             right: 10px;
-            bottom: 10px;
-            width: calc(100% - 20px);
+          }
+          
+          /* 在超小屏幕下进一步缩小按钮尺寸 */
+          .import-btn,
+          .export-btn {
+            width: 100%;
             text-align: center;
+            padding: 6px 9px; /* 进一步缩小到原来的3/4的3/4 */
+            font-size: 10px; /* 进一步缩小字体 */
+            min-width: 50px; /* 进一步缩小最小宽度 */
+            box-shadow: 0 1px 4px rgba(0,0,0,0.12); /* 调整阴影 */
           }
         }
         
@@ -453,14 +767,48 @@
             font-size: 10px;
           }
           
-          /* 在横屏模式下，如果宽度足够，保持左右布局 */
+          /* 橫屏模式下恢復迷你加號布局 */
           .subtitle {
-            flex-direction: row; /* 横屏时恢复左右布局 */
+            flex-direction: row;
           }
           
-          .text-box,
-          .note-box {
-            flex: 1; /* 各占一半 */
+          .text-box {
+            flex: 1;
+            padding-right: 28px;
+          }
+          
+          .add-note-btn {
+            display: flex;
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+          }
+          
+          /* 有筆記時改為上下布局 */
+          .subtitle.has-note {
+            flex-direction: column;
+          }
+          
+          .subtitle.has-note .text-box {
+            padding-right: 10px;
+          }
+          
+          .subtitle.has-note .add-note-btn {
+            display: none;
+          }
+          
+          /* 横屏时按钮容器改回水平布局 */
+          .button-container {
+            flex-direction: row;
+          }
+          
+          /* 横屏模式下按钮也保持缩小状态 */
+          .import-btn,
+          .export-btn {
+            padding: 7.5px 12px;
+            font-size: 10.5px;
+            min-width: 67.5px;
           }
         }
         
@@ -484,8 +832,19 @@
             min-height: 44px; /* 滿足最小觸摸目標尺寸 */
           }
           
-          .export-btn {
+          .add-note-btn {
+            min-width: 44px;
             min-height: 44px;
+          }
+          
+          .close-note-btn {
+            min-width: 44px;
+            min-height: 44px;
+          }
+          
+          .export-btn,
+          .import-btn {
+            min-height: 33px; /* 缩小到原来的3/4 (44px * 0.75) */
           }
         }
     </style>
@@ -514,8 +873,14 @@
     <!-- 文件信息 -->
     <div class="file-info" id="fileInfo" style="display:none;"></div>
 
-    <!-- 匯出按鈕 -->
-    <button class="export-btn" id="exportBtn" style="display:none;">導出筆記</button>
+    <!-- 按鈕容器 -->
+    <div class="button-container">
+        <button class="import-btn" id="importBtn">導入筆記</button>
+        <button class="export-btn" id="exportBtn" style="display:none;">導出筆記</button>
+    </div>
+
+    <!-- 隱藏的文件輸入框 -->
+    <input type="file" id="importFileInput" accept=".html" style="display:none" />
 
     <main>
         <div id="subtitles" aria-live="polite"></div>
@@ -527,6 +892,7 @@
         let allSubtitles = [];
         let notesData = {}; // {index: noteText}
         let noteCount = 0; // 筆記數量統計
+        let currentOpenNoteBox = null; // 當前打開的筆記框
         
         // ==================== 工具函數 ====================
         function debounce(func, wait) {
@@ -611,9 +977,6 @@
         
         // ==================== 自動調整筆記框高度 ====================
         function autoResizeTextarea(textarea) {
-          // 保存當前的滾動位置
-          const scrollTop = window.scrollY;
-          
           // 重置高度為一行
           textarea.style.height = '34px';
           
@@ -641,9 +1004,53 @@
           } else {
             textarea.style.overflowY = 'hidden';
           }
-          
-          // 恢復滾動位置
-          window.scrollTo(0, scrollTop);
+        }
+        
+        // ==================== 關閉當前打開的筆記框 ====================
+        function closeCurrentNoteBox() {
+          if (currentOpenNoteBox) {
+            const noteBox = currentOpenNoteBox;
+            const index = parseInt(noteBox.dataset.index);
+            const subtitleDiv = noteBox.closest('.subtitle');
+            const noteArea = noteBox.closest('.note-area');
+            const noteContainer = noteArea.querySelector('.note-container');
+            const addNoteBtn = noteArea.querySelector('.add-note-btn');
+            const closeNoteBtn = noteArea.querySelector('.close-note-btn');
+            
+            const trimmedValue = noteBox.value.trim();
+            
+            // 保存筆記（如果有內容）
+            if (trimmedValue) {
+              notesData[index] = trimmedValue;
+              noteBox.classList.add('has-content');
+              subtitleDiv.classList.add('has-note');
+              noteArea.classList.add('has-note');
+              noteContainer.classList.add('has-note');
+              
+              // 筆記框保持顯示，但移除激活狀態
+              noteBox.classList.remove('activated');
+              noteBox.classList.add('show');
+              addNoteBtn.style.display = 'none';
+              closeNoteBtn.classList.remove('show');
+            } else {
+              // 沒有內容，完全關閉
+              delete notesData[index];
+              noteBox.classList.remove('has-content', 'show', 'activated');
+              subtitleDiv.classList.remove('has-note');
+              noteArea.classList.remove('has-note');
+              noteContainer.classList.remove('has-note');
+              
+              // 顯示加號按鈕，隱藏關閉按鈕
+              addNoteBtn.style.display = 'flex';
+              closeNoteBtn.classList.remove('show');
+            }
+            
+            // 更新筆記計數
+            updateNoteCount();
+            
+            // 清除當前打開的筆記框引用
+            currentOpenNoteBox = null;
+          }
         }
         
         // ==================== 解析器函數 ====================
@@ -764,13 +1171,18 @@
           const escapedText = escapeHtml(subtitle.text || '');
           const escapedNote = escapeHtml(noteContent);
           
-          // 修復：移除textarea標籤內的換行和縮進
           return `<div class="row" data-index="${index}">
               <div class="subtitle ${hasNote}">
                 <div class="text-box" data-original="${escapedText}">
                   ${escapedText}
                 </div>
-                <textarea class="note-box ${noteHasContent}" data-index="${index}" placeholder="">${escapedNote}</textarea>
+                <div class="note-area ${hasNote}">
+                  <button class="add-note-btn" data-index="${index}">+</button>
+                  <div class="note-container ${hasNote}">
+                    <textarea class="note-box ${noteHasContent} ${hasNote ? 'show' : ''} ${hasNote ? 'activated' : ''}" data-index="${index}" placeholder="">${escapedNote}</textarea>
+                  </div>
+                  <button class="close-note-btn" data-index="${index}">×</button>
+                </div>
               </div>
             </div>`;
         }
@@ -804,15 +1216,43 @@
           // 更新進度
           updateProgress(100, `已渲染 ${totalRows} 行字幕`);
           
-          // 為所有筆記框添加事件監聽器
+          // 為所有筆記框和加號按鈕添加事件監聽器
           setTimeout(() => {
             const noteBoxes = container.querySelectorAll('.note-box');
+            const addNoteBtns = container.querySelectorAll('.add-note-btn');
+            const closeNoteBtns = container.querySelectorAll('.close-note-btn');
+            
+            // 為加號按鈕添加事件
+            addNoteBtns.forEach((btn, i) => {
+              const index = parseInt(btn.dataset.index);
+              const subtitleDiv = btn.closest('.subtitle');
+              const noteArea = btn.closest('.note-area');
+              const noteContainer = noteArea.querySelector('.note-container');
+              const noteBox = noteArea.querySelector('.note-box');
+              const closeNoteBtn = noteArea.querySelector('.close-note-btn');
+              
+              setupAddNoteBtnEvents(btn, subtitleDiv, noteArea, noteContainer, noteBox, closeNoteBtn, index);
+            });
+            
+            // 為關閉按鈕添加事件
+            closeNoteBtns.forEach((btn, i) => {
+              const index = parseInt(btn.dataset.index);
+              const noteBox = btn.closest('.note-area').querySelector('.note-box');
+              
+              setupCloseNoteBtnEvents(btn, noteBox, index);
+            });
+            
+            // 為筆記框添加事件
             noteBoxes.forEach((noteBox, i) => {
               const index = parseInt(noteBox.dataset.index);
               const subtitleDiv = noteBox.closest('.subtitle');
               const textBox = subtitleDiv.querySelector('.text-box');
+              const noteArea = noteBox.closest('.note-area');
+              const noteContainer = noteArea.querySelector('.note-container');
+              const addNoteBtn = noteArea.querySelector('.add-note-btn');
+              const closeNoteBtn = noteArea.querySelector('.close-note-btn');
               
-              setupNoteBoxEvents(noteBox, subtitleDiv, textBox, index);
+              setupNoteBoxEvents(noteBox, subtitleDiv, textBox, noteArea, noteContainer, addNoteBtn, closeNoteBtn, index);
               
               // 如果筆記框有內容，調整高度
               if (noteBox.value && noteBox.value.trim()) {
@@ -821,29 +1261,119 @@
                   autoResizeTextarea(noteBox);
                 }, 10);
               }
+              
+              // 如果筆記框有內容，顯示關閉按鈕
+              if (noteBox.value && noteBox.value.trim() && noteBox.classList.contains('show')) {
+                closeNoteBtn.classList.add('show');
+              }
             });
             
             updateFileInfo(`已加載全部 ${totalRows} 行字幕`, 3000);
           }, 0);
         }
         
+        // ==================== 設置加號按鈕事件 ====================
+        function setupAddNoteBtnEvents(btn, subtitleDiv, noteArea, noteContainer, noteBox, closeNoteBtn, index) {
+          btn.addEventListener('click', function() {
+            // 關閉當前打開的筆記框
+            closeCurrentNoteBox();
+            
+            // 顯示筆記框並聚焦
+            noteBox.classList.add('show', 'activated');
+            noteContainer.classList.add('has-note');
+            noteArea.classList.add('has-note');
+            subtitleDiv.classList.add('has-note');
+            noteBox.focus();
+            
+            // 隱藏加號按鈕，顯示關閉按鈕
+            btn.style.display = 'none';
+            closeNoteBtn.classList.add('show');
+            
+            // 設置為當前打開的筆記框
+            currentOpenNoteBox = noteBox;
+            
+            // 調整筆記框高度
+            setTimeout(() => {
+              autoResizeTextarea(noteBox);
+            }, 10);
+            
+            // 顯示提示
+            showGlobalStatus('筆記框已打開，可以拖曳文字或輸入內容', 2000);
+          });
+        }
+        
+        // ==================== 設置關閉按鈕事件 ====================
+        function setupCloseNoteBtnEvents(btn, noteBox, index) {
+          btn.addEventListener('click', function() {
+            // 關閉筆記框
+            const subtitleDiv = noteBox.closest('.subtitle');
+            const noteArea = noteBox.closest('.note-area');
+            const noteContainer = noteArea.querySelector('.note-container');
+            const addNoteBtn = noteArea.querySelector('.add-note-btn');
+            
+            const trimmedValue = noteBox.value.trim();
+            
+            // 保存筆記（如果有內容）
+            if (trimmedValue) {
+              notesData[index] = trimmedValue;
+              noteBox.classList.add('has-content');
+              subtitleDiv.classList.add('has-note');
+              noteArea.classList.add('has-note');
+              noteContainer.classList.add('has-note');
+              
+              // 筆記框保持顯示，但移除激活狀態
+              noteBox.classList.remove('activated');
+              noteBox.classList.add('show');
+              addNoteBtn.style.display = 'none';
+              btn.classList.remove('show');
+            } else {
+              // 沒有內容，完全關閉
+              delete notesData[index];
+              noteBox.classList.remove('has-content', 'show', 'activated');
+              subtitleDiv.classList.remove('has-note');
+              noteArea.classList.remove('has-note');
+              noteContainer.classList.remove('has-note');
+              
+              // 顯示加號按鈕，隱藏關閉按鈕
+              addNoteBtn.style.display = 'flex';
+              btn.classList.remove('show');
+            }
+            
+            // 如果這是當前打開的筆記框，清除引用
+            if (currentOpenNoteBox === noteBox) {
+              currentOpenNoteBox = null;
+            }
+            
+            // 更新筆記計數
+            updateNoteCount();
+            
+            showGlobalStatus('筆記框已關閉', 1500);
+          });
+        }
+        
         // ==================== 設置筆記框事件 ====================
-        function setupNoteBoxEvents(noteBox, subtitleDiv, textBox, index) {
+        function setupNoteBoxEvents(noteBox, subtitleDiv, textBox, noteArea, noteContainer, addNoteBtn, closeNoteBtn, index) {
           // 筆記框輸入時自動調整高度
           noteBox.addEventListener('input', function() {
             autoResizeTextarea(this);
-            
-            // 原有的狀態更新邏輯
-            const trimmedValue = noteBox.value.trim();
-            if (trimmedValue) {
-              subtitleDiv.classList.add('has-note');
-            } else {
-              subtitleDiv.classList.remove('has-note');
-            }
           });
           
           // 筆記框獲得焦點時
           noteBox.addEventListener('focus', function() {
+            // 如果這不是當前打開的筆記框，先關閉之前的
+            if (currentOpenNoteBox && currentOpenNoteBox !== noteBox) {
+              closeCurrentNoteBox();
+            }
+            
+            // 標記為已激活
+            noteBox.classList.add('activated');
+            
+            // 設置為當前打開的筆記框
+            currentOpenNoteBox = noteBox;
+            
+            // 顯示關閉按鈕
+            closeNoteBtn.classList.add('show');
+            
             // 獲得焦點時也調整一次
             setTimeout(() => {
               autoResizeTextarea(this);
@@ -856,29 +1386,44 @@
         
           // 筆記框失去焦點時
           noteBox.addEventListener('blur', debounce(function() {
-            const trimmedValue = noteBox.value.trim();
-            
-            // 保存筆記
-            if (trimmedValue) {
-              notesData[index] = trimmedValue;
-              noteBox.classList.add('has-content');
-              subtitleDiv.classList.add('has-note');
+            // 只有在不是當前打開的筆記框時才處理blur事件
+            if (currentOpenNoteBox !== noteBox) {
+              const trimmedValue = noteBox.value.trim();
               
-              // 顯示保存狀態
-              showGlobalStatus(`第 ${index + 1} 行筆記已保存`, 1500);
-            } else {
-              // 如果內容為空，刪除筆記
-              delete notesData[index];
-              noteBox.classList.remove('has-content');
-              subtitleDiv.classList.remove('has-note');
+              // 保存筆記
+              if (trimmedValue) {
+                notesData[index] = trimmedValue;
+                noteBox.classList.add('has-content');
+                subtitleDiv.classList.add('has-note');
+                noteArea.classList.add('has-note');
+                noteContainer.classList.add('has-note');
+                
+                // 筆記框保持顯示
+                noteBox.classList.add('show');
+                addNoteBtn.style.display = 'none';
+                closeNoteBtn.classList.add('show');
+                
+                // 顯示保存狀態
+                showGlobalStatus(`第 ${index + 1} 行筆記已保存`, 1500);
+              } else {
+                // 如果內容為空，檢查是否曾經被激活過
+                if (noteBox.classList.contains('activated')) {
+                  // 如果被激活過，但內容為空，只刪除筆記數據，但不隱藏筆記框
+                  delete notesData[index];
+                  noteBox.classList.remove('has-content');
+                  subtitleDiv.classList.remove('has-note');
+                  noteArea.classList.remove('has-note');
+                  noteContainer.classList.remove('has-note');
+                  
+                  // 但筆記框仍然顯示，只是沒有內容
+                  // 這樣用戶可以繼續拖曳文字或輸入
+                }
+              }
               
-              // 顯示刪除狀態
-              showGlobalStatus(`第 ${index + 1} 行筆記已刪除`, 1500);
+              // 更新筆記計數
+              updateNoteCount();
             }
-            
-            // 更新筆記計數
-            updateNoteCount();
-          }, 300));
+          }, 500)); // 增加延遲時間，避免拖曳時觸發
         
           // 快捷鍵：Ctrl+Enter保存
           noteBox.addEventListener('keydown', function(e) {
@@ -890,8 +1435,57 @@
         
           // 雙擊文字框也可以聚焦筆記框
           textBox.addEventListener('dblclick', function() {
-            noteBox.focus();
-            noteBox.selectionStart = noteBox.value.length;
+            // 如果筆記框還沒顯示，先顯示
+            if (!noteBox.classList.contains('show')) {
+              addNoteBtn.click(); // 模擬點擊加號按鈕
+            } else {
+              noteBox.focus();
+              noteBox.selectionStart = noteBox.value.length;
+            }
+          });
+          
+          // 文字框支持拖曳選擇
+          textBox.addEventListener('mousedown', function(e) {
+            // 允許文字選擇
+            this.style.userSelect = 'text';
+          });
+          
+          // 筆記框支持拖放文字
+          noteBox.addEventListener('dragover', function(e) {
+            e.preventDefault(); // 允許拖放
+            this.style.borderColor = '#4CAF50';
+            this.style.boxShadow = '0 0 0 2px rgba(76, 175, 80, 0.5)';
+          });
+          
+          noteBox.addEventListener('dragleave', function(e) {
+            this.style.borderColor = '';
+            this.style.boxShadow = '';
+          });
+          
+          noteBox.addEventListener('drop', function(e) {
+            e.preventDefault();
+            this.style.borderColor = '';
+            this.style.boxShadow = '';
+            
+            // 獲取拖曳的文字
+            const text = e.dataTransfer.getData('text/plain');
+            if (text) {
+              // 插入文字到當前游標位置
+              const startPos = this.selectionStart;
+              const endPos = this.selectionEnd;
+              const currentValue = this.value;
+              
+              this.value = currentValue.substring(0, startPos) + text + currentValue.substring(endPos);
+              
+              // 觸發input事件以調整高度
+              this.dispatchEvent(new Event('input'));
+              
+              // 顯示關閉按鈕
+              closeNoteBtn.classList.add('show');
+              
+              // 顯示提示
+              showGlobalStatus('文字已拖曳到筆記框', 1500);
+            }
           });
         }
         
@@ -899,7 +1493,8 @@
         function displaySubtitles(subtitles, fileName) {
           currentFileName = fileName || null;
           allSubtitles = subtitles;
-          notesData = {};
+          // 注意：這裡不清除notesData，這樣可以保留現有筆記
+          // notesData = {}; // 移除這行，不清除筆記
           noteCount = 0;
           
           const container = document.getElementById('subtitles');
@@ -976,8 +1571,101 @@
           }
         });
         
+        // ==================== 導入筆記功能 ====================
+        document.getElementById('importBtn').addEventListener('click', function() {
+          // 檢查是否已加載字幕
+          if (allSubtitles.length === 0) {
+            alert('請先加載字幕文件，再導入筆記');
+            return;
+          }
+          
+          document.getElementById('importFileInput').click();
+        });
+        
+        document.getElementById('importFileInput').addEventListener('change', function(e) {
+          const file = e.target.files && e.target.files[0];
+          if (!file) return;
+          
+          // 檢查是否是HTML文件
+          const ext = (file.name.split('.').pop() || '').toLowerCase();
+          if (ext !== 'html') {
+            showError('請選擇HTML文件（導出的筆記文件）');
+            return;
+          }
+          
+          const reader = new FileReader();
+          
+          reader.onerror = () => {
+            showError('讀取筆記文件時發生錯誤');
+          };
+          
+          reader.onload = (ev) => {
+            try {
+              const htmlContent = ev.target.result;
+              
+              // 使用DOMParser解析HTML
+              const parser = new DOMParser();
+              const doc = parser.parseFromString(htmlContent, 'text/html');
+              
+              // 檢查是否是我們的導出格式
+              const exportItems = doc.querySelectorAll('.export-item');
+              
+              if (exportItems.length === 0) {
+                showError('無法識別的筆記格式，請確保這是從本工具導出的筆記文件');
+                return;
+              }
+              
+              // 開始導入筆記
+              let importedCount = 0;
+              let skippedCount = 0;
+              
+              exportItems.forEach(item => {
+                // 獲取字幕文本和筆記內容
+                const subtitleEl = item.querySelector('.export-note-subtitle');
+                const noteEl = item.querySelector('.export-note-content');
+                
+                if (subtitleEl && noteEl) {
+                  const subtitleText = subtitleEl.textContent.trim();
+                  const noteText = noteEl.textContent.trim();
+                  
+                  if (subtitleText && noteText) {
+                    // 在當前字幕中查找匹配的行
+                    const matchIndex = allSubtitles.findIndex(sub => sub.text === subtitleText);
+                    
+                    if (matchIndex !== -1) {
+                      // 找到匹配，導入筆記
+                      notesData[matchIndex] = noteText;
+                      importedCount++;
+                    } else {
+                      skippedCount++;
+                    }
+                  }
+                }
+              });
+              
+              // 更新UI
+              if (importedCount > 0) {
+                // 重新渲染所有字幕行，以顯示導入的筆記
+                renderAllSubtitles(allSubtitles);
+                updateNoteCount();
+                
+                showGlobalStatus(`成功導入 ${importedCount} 條筆記${skippedCount > 0 ? `，${skippedCount} 條未找到匹配字幕` : ''}`, 4000);
+              } else {
+                showGlobalStatus('未成功導入任何筆記，請檢查字幕文件是否匹配', 3000);
+              }
+              
+            } catch (err) {
+              showError('解析筆記文件時發生錯誤：' + (err && err.message ? err.message : err));
+            }
+          };
+          
+          reader.readAsText(file, 'utf-8');
+          
+          // 清空文件輸入，以便可以再次選擇同一個文件
+          e.target.value = '';
+        });
+        
         // ==================== 搜索功能 ====================
-               // 将我的搜索函数替换为您的逻辑，但保留选择器适配
         document.getElementById('searchBox').addEventListener('input', function(){
           const q = this.value.trim();
           const rows = Array.from(document.querySelectorAll('.row'));
@@ -987,7 +1675,7 @@
             rows.forEach(row => {
               const textDiv = row.querySelector('.subtitle .text-box'); // 改为 .text-box
               if (textDiv && textDiv.dataset.original) {
-        textDiv.innerHTML = escapeHtml(textDiv.dataset.original);
+                textDiv.innerHTML = escapeHtml(textDiv.dataset.original);
               }
               row.style.display = '';
             });
@@ -1013,14 +1701,14 @@
               matchCount++;
               
               if (firstMatch === null) {
-        firstMatch = row;
+                firstMatch = row;
               }
               
               // 滚动到第一个匹配项
               if (idx === 0) {
-        setTimeout(() => {
-          row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }, 100);
+                setTimeout(() => {
+                  row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 100);
               }
             } else {
               row.style.display = 'none';
@@ -1112,4 +1800,5 @@
         });
     </script>
 </body>
+
 </html>
