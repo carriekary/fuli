@@ -15,7 +15,7 @@
     <style>
         :root {
           --header-height: 120px;
-          --accent: #355c7d;
+          --accent: #2c3e50;
           --subtitle-min-height: 30px;
           --gutter: 12px;
           --max-width: auto;
@@ -32,7 +32,7 @@
           height: 100%;
           margin: 0;
           padding: 0;
-          font-family: "Noto Serif CJK SC", "Noto Serif CJK JP", Roboto, Arial, Noto Serif;
+          font-family: "Arial", "Noto Serif CJK JP", Roboto, Arial, Noto Serif;
           background: #f5f5f5;
           color: #333;
         }
@@ -61,7 +61,7 @@
         
         .header-left h1 {
           margin: 0;
-          font-size: 20px;
+          font-size: 30px;
         }
         
         .header-left p {
@@ -138,7 +138,7 @@
           border: none;
           background: #f9f9f9;
           font-size: 15px;
-          line-height: 1;
+          line-height: 1.3;
           color: #222;
           white-space: pre-wrap;
           word-break: break-word;
@@ -199,14 +199,14 @@
         /* 筆記框 */
         .note-box {
           width: 550px;
-          height: 35px; /* 固定初始高度 */
-          max-height: 200px;
+          height: 30px; /* 固定初始高度 */
+          max-height: 150px;
           padding: 8px 12px;
           border-radius: 6px;
           border: 1px solid #ddd;
           background: #fff;
-          font-size: 15px;
-          line-height: 1.4;
+          font-size: 13px;
+          line-height: 1.3;
           color: #333;
           box-sizing: border-box;
           resize: vertical;
@@ -474,27 +474,43 @@
             border: 1px solid rgba(0, 0, 0, 0.08);
           }
           
-          /* 文字框在小屏幕上優化視覺平衡 */
+          /* 文字框在小屏幕上優化視覺平衡 - 修復文字被小加號遮擋問題 */
           .text-box {
             flex: 1; /* 佔用可用空間 */
             min-width: 0;
-            padding-right: 28px; /* 為迷你加號按鈕留出空間 */
-            /* 減輕視覺重量 */
+            /* 修正：不再使用 padding-right，而是使用 margin-right 為小加號留出空間 */
+            padding: 6px 10px; /* 調整內邊距 */
+            margin-right: 32px; /* 為小加號留出空間，避免文字被遮擋 */
+            height: auto;
+            min-height: 34px;
+            font-size: 14px; /* 稍微減小字體 */
+            line-height: 1.35;
+            color: #333;
             background: #fdfdfd; /* 更接近白色 */
             border: 1px solid rgba(0, 0, 0, 0.1); /* 增加細邊框 */
             border-radius: 5px;
-            padding: 6px 10px; /* 調整內邊距 */
-            height: 30px;
-            font-size: 15px; /* 稍微減小字體 */
-            line-height: 1.35;
-            color: #333;
             box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05); /* 內陰影 */
             transition: all 0.2s ease;
+            /* 確保文字不會溢出到小加號區域 */
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap; /* 單行顯示，防止文字換行後與小加號重疊 */
           }
           
+          /* 鼠標懸停時顯示完整文字 */
           .text-box:hover {
             background: #fafafa;
             border-color: rgba(0, 0, 0, 0.15);
+            white-space: normal; /* 懸停時恢復換行 */
+            overflow: visible;
+            z-index: 2; /* 確保文字顯示在小加號上方 */
+            position: relative;
+          }
+          
+          /* 雙擊時也顯示完整文字 */
+          .text-box:active {
+            white-space: normal;
+            overflow: visible;
           }
           
           /* 右側區域 - 默認隱藏筆記框部分 */
@@ -506,7 +522,7 @@
             min-width: 0;
           }
           
-          /* 迷你加號按鈕 - 調整為更輕量 */
+          /* 迷你加號按鈕 - 調整為更輕量且不遮擋文字 */
           .add-note-btn {
             display: flex; /* 顯示迷你加號 */
             width: 22px; /* 稍微減小 */
@@ -515,7 +531,7 @@
             border: 1px solid #ccc; /* 更淺的邊框 */
             background: #fff;
             color: #888; /* 更淺的顏色 */
-            font-size: 14px; /* 減小字體 */
+            font-size: 13px; /* 減小字體 */
             font-weight: normal; /* 正常字重 */
             cursor: pointer;
             align-items: center;
@@ -535,6 +551,7 @@
             border-color: #999;
             color: #666;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+            z-index: 3; /* 確保懸停時在小加號上方 */
           }
           
           /* 筆記框容器 - 默認隱藏 */
@@ -554,7 +571,7 @@
           /* 筆記框 - 調整為更輕量 */
           .note-box {
             width: 100%;
-            height: 30px; /* 稍微減小高度 */
+            height: 32px; /* 稍微減小高度 */
             max-height: 150px;
             padding: 6px 10px; /* 調整內邊距 */
             border-radius: 5px;
@@ -605,8 +622,11 @@
           }
           
           .subtitle.has-note .text-box {
-            padding-right: 10px; /* 移除迷你加號的右邊距 */
+            margin-right: 0; /* 移除右邊距，因為現在是垂直布局 */
+            padding-right: 10px; /* 恢復正常內邊距 */
             width: 100%;
+            white-space: normal; /* 有筆記時恢復正常換行 */
+            overflow: visible;
           }
           
           .subtitle.has-note .add-note-btn {
@@ -675,10 +695,11 @@
           .text-box {
             padding: 5px 8px;
             font-size: 13px;
-            height: 25px;
-            line-height: 1;
+            min-height: 32px;
+            line-height: 1.3;
             border-color: rgba(0, 0, 0, 0.08);
             box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.04);
+            margin-right: 28px; /* 為小加號留出空間 */
           }
           
           .subtitle {
@@ -774,7 +795,8 @@
           
           .text-box {
             flex: 1;
-            padding-right: 28px;
+            margin-right: 32px; /* 為小加號留出空間 */
+            padding-right: 10px;
           }
           
           .add-note-btn {
@@ -791,7 +813,9 @@
           }
           
           .subtitle.has-note .text-box {
+            margin-right: 0; /* 移除右邊距 */
             padding-right: 10px;
+            white-space: normal; /* 恢復正常換行 */
           }
           
           .subtitle.has-note .add-note-btn {
@@ -830,11 +854,16 @@
           
           .text-box {
             min-height: 44px; /* 滿足最小觸摸目標尺寸 */
+            white-space: normal !important; /* 觸摸設備上總是顯示完整文字 */
+            overflow: visible !important;
           }
           
           .add-note-btn {
             min-width: 44px;
             min-height: 44px;
+            width: 28px !important;
+            height: 28px !important;
+            font-size: 16px !important;
           }
           
           .close-note-btn {
@@ -1800,5 +1829,4 @@
         });
     </script>
 </body>
-
 </html>
