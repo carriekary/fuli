@@ -6,20 +6,17 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>小野字幕君</title>
 
-    <!-- DOCX 解析 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
 
-    <!-- PDF.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
 
     <style>
         :root {
-          --header-height: 120px;
+          --header-height: 100px;
           --accent: #2c3e50;
           --subtitle-min-height: 30px;
           --gutter: 12px;
           --max-width: auto;
-          --file-input-width: 200px;
           --container-padding: 15px;
         }
         
@@ -32,7 +29,7 @@
           height: 100%;
           margin: 0;
           padding: 0;
-          font-family: "Arial", "Noto Serif CJK JP", Roboto, Arial, Noto Serif;
+          font-family: "Arial", "Hiragino Sans", "Meiryo", "Noto Serif CJK JP", Roboto, Arial, Noto Serif;
           background: #f5f5f5;
           color: #333;
         }
@@ -61,7 +58,7 @@
         
         .header-left h1 {
           margin: 0;
-          font-size: 30px;
+          font-size: 24px;
         }
         
         .header-left p {
@@ -72,18 +69,96 @@
         
         .file-search-container {
           display: flex;
-          gap: 10px;
+          gap: 12px;
           align-items: center;
           flex-wrap: wrap;
         }
+
+        /* 檔案上傳區塊新設計 */
+        .file-buttons-wrapper {
+          display: flex;
+          gap: 12px;
+        }
+
+        .file-item {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .custom-file-upload {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 6px 14px;
+          background: rgba(255, 255, 255, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.3);
+          border-radius: 20px;
+          cursor: pointer;
+          font-size: 13px;
+          color: #fff;
+          transition: all 0.2s ease;
+          max-width: 160px;
+          user-select: none;
+        }
+
+        .custom-file-upload:hover {
+          background: rgba(255, 255, 255, 0.25);
+          border-color: rgba(255, 255, 255, 0.6);
+          transform: translateY(-1px);
+        }
+
+        .custom-file-upload input[type="file"] {
+          display: none; 
+        }
+
+        .file-name-text {
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        
+        .file-icon {
+          font-size: 14px;
+        }
+
+        /* 有檔案時的視覺回饋 */
+        .custom-file-upload.has-file {
+          background: rgba(46, 204, 113, 0.2);
+          border-color: #2ecc71;
+          color: #e8f8f5;
+        }
+
+        /* 刪除檔案按鈕 */
+        .clear-btn {
+          display: none; /* 預設隱藏 */
+          cursor: pointer;
+          color: #ff5252;
+          font-size: 20px;
+          font-weight: bold;
+          padding: 0 4px;
+          user-select: none;
+          transition: transform 0.2s ease;
+        }
+
+        .clear-btn:hover {
+          transform: scale(1.2);
+        }
         
         .search-box {
-          padding: 6px 8px;
-          border-radius: 6px;
+          padding: 6px 12px;
+          border-radius: 20px;
           border: 1px solid #ddd;
           background: #fff;
           font-size: 13px;
-          width: 200px;
+          width: 180px;
+          transition: all 0.2s ease;
+        }
+
+        .search-box:focus {
+          outline: none;
+          border-color: #3498db;
+          box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
         }
         
         /* 主內容 */
@@ -100,7 +175,8 @@
         /* 每行區塊 */
         .row {
           display: block;
-          margin: 5px 0;
+          margin: 3px 0;
+          transition: opacity 0.2s ease;
         }
         
         .subtitle {
@@ -108,124 +184,114 @@
           padding: 8px 12px;
           border-radius: 8px;
           box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-          line-height: 1;
           word-break: break-word;
           font-size: 15px;
           min-height: var(--subtitle-min-height);
           display: flex;
           flex-direction: row;
+          align-items: stretch; /* 讓文字框和筆記框高度一致 */
           gap: var(--gutter);
-          align-items: stretch; /* 确保子元素等高 */
           border: 1px solid rgba(0, 0, 0, 0.05);
           transition: all 0.2s ease;
-          position: relative; /* 为迷你加号按钮定位 */
+          position: relative;
         }
         
         .subtitle:hover {
           box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
         }
         
-        .subtitle.has-note {
+        /* 標示有寫入筆記的左側橘線 */
+        .subtitle.has-written-note {
           border-left: 4px solid #ff9800;
         }
         
-        /* 左側文字框 - 大屏幕时占一半宽度 */
+        /* 左側文字框 */
         .text-box {
-          flex: 1; /* 占一半空间 */
-          height: 35px;
+          flex: 1;
+          min-height: 35px;
           padding: 8px 12px;
           border-radius: 6px;
           border: none;
           background: #f9f9f9;
           font-size: 15px;
-          line-height: 1.3;
+          line-height: 1.4;
           color: #222;
-          white-space: pre-wrap;
+          white-space: pre-wrap; /* 支援多行文字斷行顯示 */
           word-break: break-word;
           display: flex;
-          align-items: center;
+          flex-direction: column;
+          align-items: stretch;
           box-sizing: border-box;
           overflow: hidden;
-          cursor: pointer;
+          cursor: text;
           user-select: text;
+        }
+        
+        /* 日語文本樣式 */
+        .japanese-text {
+          font-family: "Hiragino Sans", "Hiragino Kaku Gothic Pro", "Meiryo", sans-serif;
+          font-size: 16px;
+          color: #2c3e50;
+          margin-bottom: 4px;
+        }
+        
+        /* 中文文本樣式 */
+        .chinese-text {
+          font-family: "Arial", "Microsoft YaHei", sans-serif;
+          font-size: 15px;
+          color: #666;
+          border-top: 1px dashed #eee;
+          padding-top: 4px;
+          margin-top: 4px;
+        }
+        
+        /* 單語模式 - 只顯示一種語言 */
+        .single-language .chinese-text {
+          display: none;
+        }
+        
+        .single-language .japanese-text {
+          margin-bottom: 0;
+          border: none;
         }
         
         /* 右側區域 */
         .note-area {
           display: flex;
           flex-direction: row;
-          align-items: center;
+          align-items: stretch;
           gap: 8px;
           position: relative;
-          min-width: 0; /* 允許在無筆記時收縮 */
+          min-width: 0;
+          flex: 1;
         }
         
-        /* 加號按鈕 */
-        .add-note-btn {
-          width: 30px;
-          height: 30px;
-          border-radius: 50%;
-          border: 1px solid #ddd;
-          background: #fff;
-          color: #666;
-          font-size: 18px;
-          font-weight: bold;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: all 0.2s ease;
-          flex-shrink: 0;
-        }
-        
-        .add-note-btn:hover {
-          background: #f5f5f5;
-          border-color: #aaa;
-        }
-        
-        /* 筆記框容器 */
+        /* 筆記框容器始終顯示 */
         .note-container {
           flex: 1;
-          display: none; /* 預設隱藏 */
-          align-items: center;
-          min-width: 0; /* 允許收縮 */
-        }
-        
-        /* 有筆記時顯示筆記框容器 */
-        .note-container.has-note {
           display: flex;
+          align-items: stretch;
+          min-width: 0;
         }
         
-        /* 筆記框 */
+        /* 筆記框始終展開 */
         .note-box {
-          width: 550px;
-          height: 30px; /* 固定初始高度 */
+          width: 100%;
+          min-height: 34px;
           max-height: 150px;
           padding: 8px 12px;
           border-radius: 6px;
           border: 1px solid #ddd;
           background: #fff;
           font-size: 13px;
-          line-height: 1.3;
+          line-height: 1.4;
           color: #333;
           box-sizing: border-box;
-          resize: vertical;
+          resize: none; 
           font-family: inherit;
-          transition: all 0.2s ease;
-          overflow-y: auto; /* 允許滾動 */
-          display: none; /* 預設隱藏 */
-        }
-        
-        /* 顯示筆記框 */
-        .note-box.show {
+          transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+          overflow-y: hidden;
           display: block;
-        }
-        
-        /* 筆記框被激活（點開過） */
-        .note-box.activated {
-          /* 有特殊的視覺提示 */
-          border-color: #4CAF50;
-          box-shadow: 0 0 0 1px rgba(76, 175, 80, 0.3);
         }
         
         /* 筆記有內容時的樣式 */
@@ -239,44 +305,10 @@
         /* 編輯時的樣式 */
         .note-box:focus {
           outline: none;
-          border-color: var(--accent);
+          border-color: #4CAF50;
           background: #fff;
           color: #333;
-          box-shadow: 0 0 0 3px rgba(53, 92, 125, 0.2);
-        }
-        
-        .note-box.has-content:focus {
-          background: #fff;
-          color: #333;
-        }
-        
-        /* 關閉按鈕 */
-        .close-note-btn {
-          width: 24px;
-          height: 24px;
-          border-radius: 50%;
-          border: 1px solid #ddd;
-          background: #fff;
-          color: #999;
-          font-size: 14px;
-          cursor: pointer;
-          display: none; /* 預設隱藏 */
-          align-items: center;
-          justify-content: center;
-          transition: all 0.2s ease;
-          flex-shrink: 0;
-          margin-left: 8px;
-        }
-        
-        .close-note-btn:hover {
-          background: #f5f5f5;
-          color: #666;
-          border-color: #aaa;
-        }
-        
-        /* 顯示關閉按鈕 */
-        .close-note-btn.show {
-          display: flex;
+          box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.2);
         }
         
         /* 文件信息 */
@@ -296,8 +328,11 @@
         
         /* highlight */
         .highlight {
-          background: yellow;
+          background: #ffff00;
+          color: #d32f2f;
           font-weight: 700;
+          padding: 0 2px;
+          border-radius: 2px;
         }
         
         /* 加載指示器 */
@@ -324,7 +359,7 @@
           color: white;
           border: none;
           padding: 10px 16px;
-          border-radius: 6px;
+          border-radius: 20px;
           cursor: pointer;
           font-size: 14px;
           box-shadow: 0 2px 8px rgba(0,0,0,0.2);
@@ -343,7 +378,7 @@
           color: white;
           border: none;
           padding: 10px 16px;
-          border-radius: 6px;
+          border-radius: 20px;
           cursor: pointer;
           font-size: 14px;
           transition: all 0.2s ease;
@@ -394,487 +429,84 @@
           transition: width 0.3s ease;
         }
         
-        /* 響應式設計 */
-        
-        /* 中等屏幕（900px-1200px）保持左右布局，各占一半 */
-        @media (max-width: 1200px) {
-          :root {
-            --container-padding: 12px;
-          }
-          
-          .text-box {
-            flex: 1; /* 仍然各占一半 */
-          }
+        /* 雙語切換按鈕 */
+        .bilingual-btn {
+          background: #9b59b6;
+          color: white;
+          border: none;
+          padding: 6px 14px;
+          border-radius: 20px;
+          cursor: pointer;
+          font-size: 13px;
+          transition: all 0.2s ease;
         }
         
-        /* 小屏幕（600px-900px）优化文字框视觉平衡 */
+        .bilingual-btn:hover {
+          background: #8e44ad;
+          transform: translateY(-1px);
+        }
+        
+        .bilingual-btn.active {
+          box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5);
+        }
+        
+        /* 中屏幕（600px-900px） */
         @media (max-width: 900px) {
           :root {
-            --header-height: 130px; /* 增加header高度 */
+            --header-height: 120px;
           }
-          
-          /* header在小屏幕下改為垂直佈局 */
           .header {
             flex-direction: column;
             align-items: flex-start;
             justify-content: center;
             padding: 12px 16px;
-            height: var(--header-height);
           }
-          
           .header-left {
             width: 100%;
-            margin-bottom: 10px;
+            margin-bottom: 6px;
           }
-          
-          .header-left h1 {
-            font-size: 18px;
-            line-height: 1.2;
-          }
-          
-          .header-left p {
-            font-size: 11px;
-            line-height: 1.3;
-          }
-          
+          .header-left h1 { font-size: 18px; line-height: 1.2; }
+          .header-left p { font-size: 11px; line-height: 1.3; }
           .file-search-container {
-            width: 100%;
-            justify-content: space-between;
-            gap: 8px;
+            width: 100%; justify-content: flex-start; gap: 6px;
           }
-          
-          #fileInput {
-            flex: 1;
-            min-width: 0; /* 允許縮小 */
-            font-size: 12px;
-            padding: 6px 4px;
+          .custom-file-upload {
+            padding: 4px 10px; max-width: 130px; font-size: 12px;
           }
-          
           .search-box {
-            flex: 1;
-            min-width: 0; /* 允許縮小 */
-            width: auto;
-            font-size: 12px;
+            flex: 1; min-width: 120px; width: auto; font-size: 12px;
           }
-          
-          /* 主內容調整 */
-          main {
-            padding-top: calc(var(--header-height) + 16px);
-            padding-bottom: 180px;
+          .bilingual-btn {
+            font-size: 11px; padding: 5px 10px;
           }
-          
-          /* 字幕框在小屏幕上保持水平布局，但調整內部結構 */
+          main { padding-top: calc(var(--header-height) + 16px); padding-bottom: 180px; }
           .subtitle {
-            flex-direction: row; /* 保持水平布局 */
-            gap: 8px;
-            padding: 8px 10px;
-            position: relative; /* 為迷你加號按鈕定位 */
-            /* 减轻阴影效果 */
-            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
-            border: 1px solid rgba(0, 0, 0, 0.08);
+            flex-direction: column; gap: 8px; padding: 8px 10px;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06); border: 1px solid rgba(0, 0, 0, 0.08);
           }
-          
-          /* 文字框在小屏幕上優化視覺平衡 - 修復文字被小加號遮擋問題 */
           .text-box {
-            flex: 1; /* 佔用可用空間 */
-            min-width: 0;
-            /* 修正：不再使用 padding-right，而是使用 margin-right 為小加號留出空間 */
-            padding: 6px 10px; /* 調整內邊距 */
-            margin-right: 32px; /* 為小加號留出空間，避免文字被遮擋 */
-            height: auto;
-            min-height: 34px;
-            font-size: 14px; /* 稍微減小字體 */
-            line-height: 1.35;
-            color: #333;
-            background: #fdfdfd; /* 更接近白色 */
-            border: 1px solid rgba(0, 0, 0, 0.1); /* 增加細邊框 */
-            border-radius: 5px;
-            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05); /* 內陰影 */
-            transition: all 0.2s ease;
-            /* 確保文字不會溢出到小加號區域 */
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap; /* 單行顯示，防止文字換行後與小加號重疊 */
+            width: 100%; padding: 6px 10px; height: auto; min-height: 34px; font-size: 14px;
           }
-          
-          /* 鼠標懸停時顯示完整文字 */
-          .text-box:hover {
-            background: #fafafa;
-            border-color: rgba(0, 0, 0, 0.15);
-            white-space: normal; /* 懸停時恢復換行 */
-            overflow: visible;
-            z-index: 2; /* 確保文字顯示在小加號上方 */
-            position: relative;
-          }
-          
-          /* 雙擊時也顯示完整文字 */
-          .text-box:active {
-            white-space: normal;
-            overflow: visible;
-          }
-          
-          /* 右側區域 - 默認隱藏筆記框部分 */
-          .note-area {
-            display: flex;
-            flex-direction: row;
-            align-items: center;
-            gap: 6px;
-            min-width: 0;
-          }
-          
-          /* 迷你加號按鈕 - 調整為更輕量且不遮擋文字 */
-          .add-note-btn {
-            display: flex; /* 顯示迷你加號 */
-            width: 22px; /* 稍微減小 */
-            height: 22px;
-            border-radius: 50%;
-            border: 1px solid #ccc; /* 更淺的邊框 */
-            background: #fff;
-            color: #888; /* 更淺的顏色 */
-            font-size: 13px; /* 減小字體 */
-            font-weight: normal; /* 正常字重 */
-            cursor: pointer;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s ease;
-            flex-shrink: 0;
-            position: absolute;
-            right: 10px; /* 調整位置 */
-            top: 50%;
-            transform: translateY(-50%);
-            z-index: 1;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1); /* 輕微陰影 */
-          }
-          
-          .add-note-btn:hover {
-            background: #f8f8f8;
-            border-color: #999;
-            color: #666;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
-            z-index: 3; /* 確保懸停時在小加號上方 */
-          }
-          
-          /* 筆記框容器 - 默認隱藏 */
-          .note-container {
-            display: none;
-            width: 0;
-            overflow: hidden;
-            transition: width 0.3s ease;
-          }
-          
-          /* 有筆記時顯示筆記框容器 */
-          .note-container.has-note {
-            display: flex;
-            width: 100%; /* 佔用完整寬度 */
-          }
-          
-          /* 筆記框 - 調整為更輕量 */
-          .note-box {
-            width: 100%;
-            height: 32px; /* 稍微減小高度 */
-            max-height: 150px;
-            padding: 6px 10px; /* 調整內邊距 */
-            border-radius: 5px;
-            border: 1px solid #ddd;
-            background: #fff;
-            font-size: 12px; /* 稍微減小字體 */
-            line-height: 1;
-            color: #333;
-            box-sizing: border-box;
-            resize: vertical;
-            font-family: inherit;
-            transition: all 0.2s ease;
-            overflow-y: auto;
-            display: none; /* 默認隱藏 */
-          }
-          
-          /* 顯示筆記框 */
-          .note-box.show {
-            display: block;
-          }
-          
-          /* 關閉按鈕 - 調整為更輕量 */
-          .close-note-btn {
-            width: 22px;
-            height: 22px;
-            border-radius: 50%;
-            border: 1px solid #ddd;
-            background: #fff;
-            color: #999;
-            font-size: 13px;
-            cursor: pointer;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s ease;
-            flex-shrink: 0;
-            margin-left: 6px;
-          }
-          
-          .close-note-btn.show {
-            display: flex;
-          }
-          
-          /* 小屏幕時如果有筆記，調整布局為上下 */
-          .subtitle.has-note {
-            flex-direction: column; /* 改為垂直布局 */
-            gap: 8px;
-          }
-          
-          .subtitle.has-note .text-box {
-            margin-right: 0; /* 移除右邊距，因為現在是垂直布局 */
-            padding-right: 10px; /* 恢復正常內邊距 */
-            width: 100%;
-            white-space: normal; /* 有筆記時恢復正常換行 */
-            overflow: visible;
-          }
-          
-          .subtitle.has-note .add-note-btn {
-            display: none; /* 有筆記時隱藏迷你加號 */
-          }
-          
-          .subtitle.has-note .note-area {
-            width: 100%;
-            justify-content: space-between;
-          }
-          
-          .subtitle.has-note .note-container {
-            flex: 1;
-          }
-          
-          /* 調整按鈕容器位置 */
+          .note-area { width: 100%; flex: none; }
+          .note-container { width: 100%; flex: none; }
+          .note-box { width: 100%; height: auto; max-height: 20px; }
           .button-container {
-            bottom: 10px;
-            right: 10px;
-            left: 10px;
-            justify-content: center;
-            gap: 8px; /* 小屏幕下减小按钮间距 */
-          }
-          
-          /* 在小屏幕下缩小按钮尺寸到原来的3/4 */
-          .import-btn,
-          .export-btn {
-            padding: 7.5px 12px; /* 原来是10px 16px，缩小到3/4 */
-            font-size: 10.5px; /* 原来是14px，缩小到3/4 */
-            min-width: 67.5px; /* 原来是90px，缩小到3/4 */
-            box-shadow: 0 1px 6px rgba(0,0,0,0.15); /* 调整阴影 */
+            bottom: 10px; right: 10px; left: 10px; justify-content: center; gap: 8px;
           }
         }
         
-        /* 超小屏幕（600px以下）进一步优化 */
+        /* 超小屏幕（600px以下） */
         @media (max-width: 600px) {
-          :root {
-            --header-height: 150px; /* 進一步增加header高度 */
-          }
-          
-          .header {
-            padding: 10px 12px;
-          }
-          
-          .file-search-container {
-            flex-direction: column;
-            gap: 6px;
-            align-items: stretch;
-          }
-          
-          #fileInput, 
-          .search-box {
-            width: 100%;
-            flex: none;
-          }
-          
-          .header-left h1 {
-            font-size: 16px;
-          }
-          
-          .header-left p {
-            font-size: 10px;
-          }
-          
-          /* 超小屏幕下進一步減輕文字框視覺重量 */
-          .text-box {
-            padding: 5px 8px;
-            font-size: 13px;
-            min-height: 32px;
-            line-height: 1.3;
-            border-color: rgba(0, 0, 0, 0.08);
-            box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.04);
-            margin-right: 28px; /* 為小加號留出空間 */
-          }
-          
-          .subtitle {
-            padding: 6px 8px;
-            margin-bottom: 4px;
-          }
-          
-          /* 超小屏幕下迷你加號更小更輕 */
-          .add-note-btn {
-            width: 20px;
-            height: 20px;
-            font-size: 12px;
-            right: 8px;
-            border-width: 0.5px;
-          }
-          
-          /* 調整全局狀態指示器位置 */
-          .global-status {
-            top: calc(var(--header-height) + 5px);
-            right: 10px;
-            left: 10px;
-            text-align: center;
-            padding: 5px 8px;
-            font-size: 10.5px; /* 也相应缩小 */
-          }
-          
-          /* 調整文件信息位置 */
-          .file-info {
-            left: 10px;
-            right: 10px;
-            bottom: 70px;
-            max-width: none;
-            font-size: 10.5px; /* 相应缩小字体 */
-            padding: 6px 9px; /* 缩小内边距 */
-          }
-          
-          /* 調整按鈕容器位置 */
-          .button-container {
-            flex-direction: column;
-            gap: 6px; /* 进一步减小按钮间距 */
-            bottom: 10px;
-            left: 10px;
-            right: 10px;
-          }
-          
-          /* 在超小屏幕下进一步缩小按钮尺寸 */
-          .import-btn,
-          .export-btn {
-            width: 100%;
-            text-align: center;
-            padding: 6px 9px; /* 进一步缩小到原来的3/4的3/4 */
-            font-size: 10px; /* 进一步缩小字体 */
-            min-width: 50px; /* 进一步缩小最小宽度 */
-            box-shadow: 0 1px 4px rgba(0,0,0,0.12); /* 调整阴影 */
-          }
-        }
-        
-        /* 橫向屏幕優化 */
-        @media (max-width: 900px) and (orientation: landscape) {
-          :root {
-            --header-height: 90px;
-          }
-          
-          .header {
-            flex-direction: row;
-            align-items: center;
-          }
-          
-          .header-left {
-            width: auto;
-            margin-bottom: 0;
-            margin-right: 10px;
-            flex-shrink: 0;
-          }
-          
-          .file-search-container {
-            flex: 1;
-            flex-direction: row;
-          }
-          
-          .header-left h1 {
-            font-size: 16px;
-          }
-          
-          .header-left p {
-            font-size: 10px;
-          }
-          
-          /* 橫屏模式下恢復迷你加號布局 */
-          .subtitle {
-            flex-direction: row;
-          }
-          
-          .text-box {
-            flex: 1;
-            margin-right: 32px; /* 為小加號留出空間 */
-            padding-right: 10px;
-          }
-          
-          .add-note-btn {
-            display: flex;
-            position: absolute;
-            right: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-          }
-          
-          /* 有筆記時改為上下布局 */
-          .subtitle.has-note {
-            flex-direction: column;
-          }
-          
-          .subtitle.has-note .text-box {
-            margin-right: 0; /* 移除右邊距 */
-            padding-right: 10px;
-            white-space: normal; /* 恢復正常換行 */
-          }
-          
-          .subtitle.has-note .add-note-btn {
-            display: none;
-          }
-          
-          /* 横屏时按钮容器改回水平布局 */
-          .button-container {
-            flex-direction: row;
-          }
-          
-          /* 横屏模式下按钮也保持缩小状态 */
-          .import-btn,
-          .export-btn {
-            padding: 7.5px 12px;
-            font-size: 10.5px;
-            min-width: 67.5px;
-          }
-        }
-        
-        /* 確保文件輸入框在小屏幕上可點擊 */
-        #fileInput {
-          cursor: pointer;
-          font-size: 13px;
-        }
-        
-        #fileInput::-webkit-file-upload-button {
-          cursor: pointer;
-        }
-        
-        /* 優化觸摸設備體驗 */
-        @media (hover: none) and (pointer: coarse) {
-          .note-box {
-            min-height: 44px; /* 滿足最小觸摸目標尺寸 */
-          }
-          
-          .text-box {
-            min-height: 44px; /* 滿足最小觸摸目標尺寸 */
-            white-space: normal !important; /* 觸摸設備上總是顯示完整文字 */
-            overflow: visible !important;
-          }
-          
-          .add-note-btn {
-            min-width: 44px;
-            min-height: 44px;
-            width: 28px !important;
-            height: 28px !important;
-            font-size: 16px !important;
-          }
-          
-          .close-note-btn {
-            min-width: 44px;
-            min-height: 44px;
-          }
-          
-          .export-btn,
-          .import-btn {
-            min-height: 33px; /* 缩小到原来的3/4 (44px * 0.75) */
-          }
+          :root { --header-height: 140px; }
+          .file-search-container { flex-direction: row; gap: 6px; }
+          .file-buttons-wrapper { width: 100%; flex: none; gap: 6px; }
+          .file-item { width: calc(50% - 3px); justify-content: space-between; }
+          .custom-file-upload { flex: 1; max-width: none; justify-content: center; padding: 6px; }
+          .file-name-text { font-size: 11px; max-width: 70px; }
+          .clear-btn { font-size: 18px; }
+          .search-box { width: calc(100% - 76px); flex: none; }
+          .bilingual-btn { width: 70px; flex: none; padding: 6px 4px; }
+          main { padding-top: calc(var(--header-height) + 12px); }
         }
     </style>
 </head>
@@ -886,29 +518,44 @@
             <p>支援：.srt / .ass / .docx / .txt / .pdf</p>
         </div>
         <div class="file-search-container" role="region" aria-label="檔案與搜尋">
-            <input id="fileInput" type="file" accept=".ass,.srt,.docx,.txt,.pdf" />
-            <input id="searchBox" class="search-box" type="text" placeholder="輸入搜尋內容" />
+            
+            <div class="file-buttons-wrapper">
+              <div class="file-item">
+                  <label class="custom-file-upload" id="labelFile1">
+                      <input id="fileInput1" type="file" accept=".ass,.srt,.docx,.txt,.pdf" />
+                      <span class="file-icon">📁</span>
+                      <span class="file-name-text" id="textFile1">選擇檔案 1</span>
+                  </label>
+                  <span class="clear-btn" id="clearBtn1" title="移除檔案1">×</span>
+              </div>
+              <div class="file-item">
+                  <label class="custom-file-upload" id="labelFile2">
+                      <input id="fileInput2" type="file" accept=".ass,.srt,.docx,.txt,.pdf" />
+                      <span class="file-icon">📁</span>
+                      <span class="file-name-text" id="textFile2">選擇檔案 2</span>
+                  </label>
+                  <span class="clear-btn" id="clearBtn2" title="移除檔案2">×</span>
+              </div>
+            </div>
+
+            <input id="searchBox" class="search-box" type="text" placeholder="搜尋關鍵字" />
+            <button id="bilingualBtn" class="bilingual-btn">雙語顯示</button>
         </div>
     </header>
 
-    <!-- 進度條 -->
     <div class="progress-container" id="progressContainer">
         <div class="progress-bar" id="progressBar"></div>
     </div>
 
-    <!-- 全局狀態指示器 -->
     <div class="global-status" id="globalStatus"></div>
 
-    <!-- 文件信息 -->
     <div class="file-info" id="fileInfo" style="display:none;"></div>
 
-    <!-- 按鈕容器 -->
     <div class="button-container">
         <button class="import-btn" id="importBtn">導入筆記</button>
         <button class="export-btn" id="exportBtn" style="display:none;">導出筆記</button>
     </div>
 
-    <!-- 隱藏的文件輸入框 -->
     <input type="file" id="importFileInput" accept=".html" style="display:none" />
 
     <main>
@@ -917,11 +564,15 @@
 
     <script>
         // ==================== 核心狀態 ====================
-        let currentFileName = null;
-        let allSubtitles = [];
-        let notesData = {}; // {index: noteText}
-        let noteCount = 0; // 筆記數量統計
-        let currentOpenNoteBox = null; // 當前打開的筆記框
+        let currentFileName = "";
+        let allSubtitles = []; 
+        let processedSubtitles = []; 
+        let notesData = {};
+        let noteCount = 0;
+        let bilingualEnabled = true; 
+        
+        let file1Data = { name: "", subtitles: [] };
+        let file2Data = { name: "", subtitles: [] };
         
         // ==================== 工具函數 ====================
         function debounce(func, wait) {
@@ -958,11 +609,8 @@
           const fileInfo = document.getElementById('fileInfo');
           fileInfo.textContent = msg;
           fileInfo.style.display = 'block';
-          
           if (duration > 0) {
-            setTimeout(() => {
-              fileInfo.style.display = 'none';
-            }, duration);
+            setTimeout(() => { fileInfo.style.display = 'none'; }, duration);
           }
         }
         
@@ -970,27 +618,17 @@
           const status = document.getElementById('globalStatus');
           status.textContent = msg;
           status.classList.add('show');
-          
-          setTimeout(() => {
-            status.classList.remove('show');
-          }, duration);
+          setTimeout(() => { status.classList.remove('show'); }, duration);
         }
         
         function updateProgress(percent, msg = '') {
           const container = document.getElementById('progressContainer');
           const bar = document.getElementById('progressBar');
-          
           container.style.display = 'block';
           bar.style.width = percent + '%';
-          
-          if (msg) {
-            updateFileInfo(msg);
-          }
-          
+          if (msg) updateFileInfo(msg);
           if (percent >= 100) {
-            setTimeout(() => {
-              container.style.display = 'none';
-            }, 500);
+            setTimeout(() => { container.style.display = 'none'; }, 500);
           }
         }
         
@@ -1004,111 +642,291 @@
           }
         }
         
-        // ==================== 自動調整筆記框高度 ====================
+        // 【核心同步】保證左右框永遠等高
         function autoResizeTextarea(textarea) {
-          // 重置高度為一行
-          textarea.style.height = '34px';
+          const subtitleRow = textarea.closest('.subtitle');
+          if (!subtitleRow) return;
           
-          // 獲取計算後的樣式
-          const computedStyle = window.getComputedStyle(textarea);
-          let maxHeight = parseInt(computedStyle.maxHeight, 10);
+          const textBox = subtitleRow.querySelector('.text-box');
           
-          // 如果maxHeight不是數字或者為0，則使用默認的300
-          if (isNaN(maxHeight) || maxHeight <= 0) {
-            maxHeight = 300;
-          }
+          textarea.style.height = 'auto';
+          if (textBox) textBox.style.height = 'auto';
           
-          // 計算新高度（scrollHeight包含padding）
-          const newHeight = Math.min(textarea.scrollHeight, maxHeight);
+          const textHeight = textBox ? textBox.scrollHeight : 0;
+          const noteHeight = textarea.scrollHeight;
           
-          // 確保最小高度為34px（一行的高度）
-          const finalHeight = Math.max(newHeight, 34);
+          let finalHeight = Math.max(textHeight, noteHeight, 34);
           
-          // 設置新高度
-          textarea.style.height = finalHeight + 'px';
-          
-          // 如果有滾動條，設置overflow為auto
-          if (textarea.scrollHeight > maxHeight) {
+          if (finalHeight >= 150) {
             textarea.style.overflowY = 'auto';
+            finalHeight = 150;
           } else {
             textarea.style.overflowY = 'hidden';
           }
+          
+          textarea.style.height = finalHeight + 'px';
+          if (textBox) textBox.style.height = finalHeight + 'px';
         }
         
-        // ==================== 關閉當前打開的筆記框 ====================
-        function closeCurrentNoteBox() {
-          if (currentOpenNoteBox) {
-            const noteBox = currentOpenNoteBox;
-            const index = parseInt(noteBox.dataset.index);
-            const subtitleDiv = noteBox.closest('.subtitle');
-            const noteArea = noteBox.closest('.note-area');
-            const noteContainer = noteArea.querySelector('.note-container');
-            const addNoteBtn = noteArea.querySelector('.add-note-btn');
-            const closeNoteBtn = noteArea.querySelector('.close-note-btn');
-            
-            const trimmedValue = noteBox.value.trim();
-            
-            // 保存筆記（如果有內容）
-            if (trimmedValue) {
-              notesData[index] = trimmedValue;
-              noteBox.classList.add('has-content');
-              subtitleDiv.classList.add('has-note');
-              noteArea.classList.add('has-note');
-              noteContainer.classList.add('has-note');
+        function isJapaneseText(text) {
+          if (!text) return false;
+          return /[\u3040-\u309F\u30A0-\u30FF]/.test(text);
+        }
+        
+        function isChineseText(text) {
+          if (!text) return false;
+          return /[\u4E00-\u9FAF]/.test(text) && !/[\u3040-\u309F\u30A0-\u30FF]/.test(text);
+        }
+        
+        // ==================== 核心：處理與合併輸入數據 ====================
+        function processAndDisplayData() {
+          notesData = {};
+          updateNoteCount();
+
+          if (file1Data.subtitles.length > 0 && file2Data.subtitles.length > 0) {
+            showLoading("偵測到雙檔案，正在自動對齊合併...");
+            setTimeout(() => {
+              let jpSubs = file1Data.subtitles;
+              let zhSubs = file2Data.subtitles;
               
-              // 筆記框保持顯示，但移除激活狀態
-              noteBox.classList.remove('activated');
-              noteBox.classList.add('show');
-              addNoteBtn.style.display = 'none';
-              closeNoteBtn.classList.remove('show');
-            } else {
-              // 沒有內容，完全關閉
-              delete notesData[index];
-              noteBox.classList.remove('has-content', 'show', 'activated');
-              subtitleDiv.classList.remove('has-note');
-              noteArea.classList.remove('has-note');
-              noteContainer.classList.remove('has-note');
+              let f1KanaCount = 0;
+              let f2KanaCount = 0;
+              const sample1 = Math.min(20, file1Data.subtitles.length);
+              const sample2 = Math.min(20, file2Data.subtitles.length);
               
-              // 顯示加號按鈕，隱藏關閉按鈕
-              addNoteBtn.style.display = 'flex';
-              closeNoteBtn.classList.remove('show');
-            }
-            
-            // 更新筆記計數
-            updateNoteCount();
-            
-            // 清除當前打開的筆記框引用
-            currentOpenNoteBox = null;
+              for(let i=0; i<sample1; i++) {
+                if (isJapaneseText(file1Data.subtitles[i].text)) f1KanaCount++;
+              }
+              for(let i=0; i<sample2; i++) {
+                if (isJapaneseText(file2Data.subtitles[i].text)) f2KanaCount++;
+              }
+
+              if (f2KanaCount > f1KanaCount) {
+                jpSubs = file2Data.subtitles;
+                zhSubs = file1Data.subtitles;
+              } else {
+                jpSubs = file1Data.subtitles;
+                zhSubs = file2Data.subtitles;
+              }
+
+              const merged = mergeSubtitlesArrays(jpSubs, zhSubs);
+              currentFileName = `${file1Data.name} + ${file2Data.name}`;
+              processedSubtitles = merged;
+              allSubtitles = merged;
+              renderAllSubtitles(merged);
+            }, 100);
+          } else if (file1Data.subtitles.length > 0) {
+            currentFileName = file1Data.name;
+            processedSubtitles = processSingleFileSubtitles(file1Data.subtitles);
+            allSubtitles = processedSubtitles;
+            renderAllSubtitles(processedSubtitles);
+          } else if (file2Data.subtitles.length > 0) {
+            currentFileName = file2Data.name;
+            processedSubtitles = processSingleFileSubtitles(file2Data.subtitles);
+            allSubtitles = processedSubtitles;
+            renderAllSubtitles(processedSubtitles);
           }
         }
-        
-        // ==================== 解析器函數 ====================
+
+        // 【修正 1】強大的單檔處理邏輯，自動對齊時間碼
+        function processSingleFileSubtitles(subtitles) {
+          const processed = [];
+          const hasTimecode = subtitles.length > 0 && subtitles[0].startTime;
+
+          if (hasTimecode) {
+            const timecodeMap = new Map();
+            subtitles.forEach(sub => {
+              if (!sub.startTime) return;
+              const timeKey = sub.startTime.split(/[,.]/)[0]; // 忽略毫秒，精準對齊
+              if (!timecodeMap.has(timeKey)) {
+                timecodeMap.set(timeKey, { jpTexts: [], zhTexts: [], rawTexts: [], startTime: sub.startTime, endTime: sub.endTime });
+              }
+              const group = timecodeMap.get(timeKey);
+              
+              // 支援在同一個 subtitle 區塊內換行（如 SRT）
+              const lines = sub.text.split('\n').map(t => t.trim()).filter(t => t);
+              lines.forEach(line => {
+                if (isJapaneseText(line)) group.jpTexts.push(line);
+                else if (isChineseText(line)) group.zhTexts.push(line);
+                else group.rawTexts.push(line);
+              });
+            });
+
+            const sorted = Array.from(timecodeMap.values()).sort((a, b) => a.startTime.localeCompare(b.startTime));
+            sorted.forEach(group => {
+              let jp = group.jpTexts.join('\n');
+              let zh = group.zhTexts.join('\n');
+              
+              if (!jp && !zh) {
+                jp = group.rawTexts.join('\n');
+              } else if (jp && !zh && group.rawTexts.length) {
+                zh = group.rawTexts.join('\n');
+              } else if (!jp && zh && group.rawTexts.length) {
+                jp = group.rawTexts.join('\n');
+              }
+
+              if (jp && !zh && (jp.includes('|') || jp.includes('/') || jp.includes('\\'))) {
+                const parts = jp.split(/[|/\\]/).map(p => p.trim());
+                jp = parts[0];
+                zh = parts[1] || '';
+              }
+
+              processed.push({
+                japanese: jp,
+                chinese: zh,
+                originalText: jp + (zh ? ' | ' + zh : ''),
+                isBilingual: !!(jp && zh),
+                startTime: group.startTime,
+                endTime: group.endTime
+              });
+            });
+          } else {
+            // 如果沒有時間碼 (TXT, DOCX, PDF)，則合併相鄰的日文和中文
+            let i = 0;
+            while (i < subtitles.length) {
+              const currentText = subtitles[i].text;
+              const nextText = (i + 1 < subtitles.length) ? subtitles[i+1].text : "";
+              
+              if (currentText.includes('|') || currentText.includes('/') || currentText.includes('\\')) {
+                const parts = currentText.split(/[|/\\]/).map(p => p.trim());
+                processed.push({
+                  japanese: parts[0],
+                  chinese: parts[1] || '',
+                  originalText: currentText,
+                  isBilingual: parts.length >= 2,
+                  startTime: '', endTime: ''
+                });
+                i++;
+                continue;
+              }
+
+              const isCurrentJP = isJapaneseText(currentText);
+              const isCurrentZH = isChineseText(currentText);
+              const isNextJP = isJapaneseText(nextText);
+              const isNextZH = isChineseText(nextText);
+
+              if (isCurrentJP && isNextZH) {
+                processed.push({
+                  japanese: currentText,
+                  chinese: nextText,
+                  originalText: currentText + ' | ' + nextText,
+                  isBilingual: true,
+                  startTime: '', endTime: ''
+                });
+                i += 2;
+              } else if (isCurrentZH && isNextJP) {
+                processed.push({
+                  japanese: nextText,
+                  chinese: currentText,
+                  originalText: nextText + ' | ' + currentText,
+                  isBilingual: true,
+                  startTime: '', endTime: ''
+                });
+                i += 2;
+              } else {
+                processed.push({
+                  japanese: isCurrentJP ? currentText : (isCurrentZH ? '' : currentText),
+                  chinese: isCurrentZH ? currentText : '',
+                  originalText: currentText,
+                  isBilingual: false,
+                  startTime: '', endTime: ''
+                });
+                i++;
+              }
+            }
+          }
+          return processed;
+        }
+
+        function mergeSubtitlesArrays(japaneseSubtitles, chineseSubtitles) {
+          const merged = [];
+          const hasTimecode = (japaneseSubtitles.length > 0 && japaneseSubtitles[0].startTime) || 
+                              (chineseSubtitles.length > 0 && chineseSubtitles[0].startTime);
+
+          if (hasTimecode) {
+            const timecodeMap = new Map();
+            japaneseSubtitles.forEach(sub => {
+              if (!sub.startTime) return;
+              const timeKey = sub.startTime.split(/[,.]/)[0]; 
+              if (!timecodeMap.has(timeKey)) {
+                timecodeMap.set(timeKey, { jpText: '', zhText: '', startTime: sub.startTime, endTime: sub.endTime });
+              }
+              const cur = timecodeMap.get(timeKey).jpText;
+              timecodeMap.get(timeKey).jpText = cur ? cur + '\n' + sub.text : sub.text;
+            });
+
+            chineseSubtitles.forEach(sub => {
+              if (!sub.startTime) return;
+              const timeKey = sub.startTime.split(/[,.]/)[0]; 
+              if (!timecodeMap.has(timeKey)) {
+                timecodeMap.set(timeKey, { jpText: '', zhText: '', startTime: sub.startTime, endTime: sub.endTime });
+              }
+              const cur = timecodeMap.get(timeKey).zhText;
+              timecodeMap.get(timeKey).zhText = cur ? cur + '\n' + sub.text : sub.text;
+            });
+
+            const sorted = Array.from(timecodeMap.values()).sort((a, b) => a.startTime.localeCompare(b.startTime));
+            sorted.forEach(item => {
+              merged.push({
+                japanese: item.jpText,
+                chinese: item.zhText,
+                originalText: item.jpText || item.zhText,
+                isBilingual: !!(item.jpText && item.zhText),
+                startTime: item.startTime,
+                endTime: item.endTime
+              });
+            });
+          } else {
+            const maxLength = Math.max(japaneseSubtitles.length, chineseSubtitles.length);
+            for (let i = 0; i < maxLength; i++) {
+              const jp = japaneseSubtitles[i] || { text: '' };
+              const zh = chineseSubtitles[i] || { text: '' };
+              merged.push({
+                japanese: jp.text || '',
+                chinese: zh.text || '',
+                originalText: jp.text || zh.text || '',
+                isBilingual: !!(jp.text && zh.text),
+                startTime: '',
+                endTime: ''
+              });
+            }
+          }
+          return merged;
+        }
+
+        // ==================== 檔案解析模組 ====================
         function parseSRT(content) {
           if (!content) return [];
-          const blocks = content.replace(/\r/g, '').split(/\n\n+/);
-          const out = [];
-          
-          blocks.forEach(block => {
+          return content.replace(/\r/g, '').split(/\n\n+/).map(block => {
             const lines = block.split('\n').filter(l => l.trim() !== '');
-            if (lines.length >= 2) {
-              const textLines = lines.slice(2);
-              if (textLines.length) out.push({ text: textLines.join(' ') });
+            if (lines.length >= 3) {
+              const timecode = lines[1];
+              const match = timecode.match(/(\d{2}:\d{2}:\d{2},\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2},\d{3})/);
+              return { 
+                startTime: match ? match[1] : '', 
+                endTime: match ? match[2] : '', 
+                text: lines.slice(2).join('\n') // 支援多行顯示
+              };
             }
-          });
-          
-          return out;
+            return null;
+          }).filter(Boolean);
         }
         
         function parseASS(content) {
           if (!content) return [];
-          const lines = content.replace(/\r/g, '').split('\n');
-          const dialogues = lines.filter(l => l.trim().startsWith('Dialogue:'));
-          
-          return dialogues.map(line => {
-            const parts = line.split(',');
-            const text = parts.slice(9).join(',').replace(/\\N/g, ' ').replace(/\{.*?\}/g, '').trim();
-            return { text };
-          });
+          return content.replace(/\r/g, '').split('\n')
+            .filter(l => l.trim().startsWith('Dialogue:'))
+            .map(line => {
+              const parts = line.split(',');
+              if (parts.length >= 10) {
+                return { 
+                  startTime: parts[1], 
+                  endTime: parts[2], 
+                  text: parts.slice(9).join(',').replace(/\\N/g, '\n').replace(/\{.*?\}/g, '').trim() // 支援多行
+                };
+              }
+              return null;
+            }).filter(item => item && item.text);
         }
         
         function parseTXT(content) {
@@ -1117,553 +935,344 @@
         }
         
         function parseDOCX(arrayBuffer, callback) {
-          updateProgress(30, '解析 DOCX 文件中...');
-          
           mammoth.convertToHtml({ arrayBuffer }).then(result => {
             const temp = document.createElement('div');
             temp.innerHTML = result.value || '';
             const ps = Array.from(temp.querySelectorAll('p')).map(p => p.textContent.trim()).filter(t => t !== '');
             callback(ps.map(t => ({ text: t })));
-            updateProgress(100, 'DOCX 解析完成');
-          }).catch(err => {
-            showError('DOCX 解析失敗：' + (err && err.message ? err.message : err));
-            updateProgress(0);
-          });
+          }).catch(err => { alert('DOCX 解析失敗'); });
         }
         
+        // 【修正 2】PDF 解析恢復 Y 軸追蹤，完美分句
         function parsePDF(arrayBuffer, callback) {
-          if (typeof pdfjsLib === 'undefined') { 
-            showError('PDF.js 未載入'); 
-            updateProgress(0);
-            return; 
-          }
-          
-          updateProgress(20, '載入 PDF 文件中...');
-          
-          // PDF.js worker
-          pdfjsLib.GlobalWorkerOptions.workerSrc = 
-            'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
-          
-          const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
-          
-          loadingTask.promise.then(pdf => {
-            updateProgress(40, `PDF 共 ${pdf.numPages} 頁，正在解析...`);
-            
-            const pagePromises = [];
+          pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+          pdfjsLib.getDocument({ data: arrayBuffer }).promise.then(pdf => {
+            const promises = [];
             for (let i = 1; i <= pdf.numPages; i++) {
-              pagePromises.push(
-                pdf.getPage(i).then(page => 
-                  page.getTextContent().then(textContent => {
-                    const items = textContent.items || [];
-                    let lines = [], current = [], lastY = null;
-                    
-                    items.forEach(item => {
-                      const y = (item.transform && item.transform[5] != null) ? item.transform[5] : null;
-                      
-                      if (lastY === null || y === null || Math.abs(y - lastY) < 5) {
-                        current.push(item.str);
-                      } else {
-                        if (current.length) lines.push(current.join(' '));
-                        current = [item.str];
-                      }
-                      lastY = y;
-                    });
-                    
+              promises.push(pdf.getPage(i).then(page => page.getTextContent().then(content => {
+                let lines = [], current = [], lastY = null;
+                content.items.forEach(item => {
+                  const y = (item.transform && item.transform[5] != null) ? item.transform[5] : null;
+                  // 若 Y 座標幾乎不變，視為同一行
+                  if (lastY === null || y === null || Math.abs(y - lastY) < 5) {
+                    current.push(item.str);
+                  } else {
                     if (current.length) lines.push(current.join(' '));
-                    return lines.join('\n');
-                  })
-                )
-              );
+                    current = [item.str];
+                  }
+                  lastY = y;
+                });
+                if (current.length) lines.push(current.join(' '));
+                return lines;
+              })));
             }
-            
-            Promise.all(pagePromises).then(pages => {
-              updateProgress(80, '整理 PDF 內容...');
-              
-              const subtitles = pages.filter(p => p && p.trim() !== '').flatMap(p => 
-                p.split('\n').map(line => ({ text: line.trim() })).filter(s => s.text !== '')
-              );
-              
-              callback(subtitles);
-              updateProgress(100, 'PDF 解析完成');
+            Promise.all(promises).then(pages => {
+              const lines = pages.flat().map(l => l.trim()).filter(l => l !== '');
+              callback(lines.map(l => ({ text: l })));
             });
-          }).catch(err => {
-            showError('PDF 解析失敗：' + (err && err.message ? err.message : err));
-            updateProgress(0);
           });
         }
         
-        // ==================== 快速生成字幕行HTML ====================
+        // ==================== 清除檔案與讀取檔案邏輯 ====================
+        function clearFile(fileNumber) {
+            if (fileNumber === 1) file1Data = { name: "", subtitles: [] };
+            if (fileNumber === 2) file2Data = { name: "", subtitles: [] };
+            
+            document.getElementById(`fileInput${fileNumber}`).value = '';
+            document.getElementById(`textFile${fileNumber}`).textContent = `選擇檔案 ${fileNumber}`;
+            document.getElementById(`labelFile${fileNumber}`).classList.remove('has-file');
+            document.getElementById(`clearBtn${fileNumber}`).style.display = 'none';
+
+            if (file1Data.subtitles.length === 0 && file2Data.subtitles.length === 0) {
+                document.getElementById('subtitles').innerHTML = '';
+                processedSubtitles = [];
+                allSubtitles = [];
+                currentFileName = "";
+                showGlobalStatus('已清空所有檔案', 2000);
+            } else {
+                processAndDisplayData();
+                showGlobalStatus(`已移除檔案 ${fileNumber}，恢復單一檔案顯示`, 2000);
+            }
+        }
+
+        document.getElementById('clearBtn1').addEventListener('click', () => clearFile(1));
+        document.getElementById('clearBtn2').addEventListener('click', () => clearFile(2));
+
+        function handleFileChoose(file, targetDataStore, fileNumber) {
+          const labelId = 'labelFile' + fileNumber;
+          const textId = 'textFile' + fileNumber;
+          const label = document.getElementById(labelId);
+          const textSpan = document.getElementById(textId);
+          
+          if (!file) {
+            clearFile(fileNumber);
+            return;
+          }
+
+          textSpan.textContent = file.name;
+          label.classList.add('has-file');
+          document.getElementById('clearBtn' + fileNumber).style.display = 'block';
+
+          const ext = (file.name.split('.').pop() || '').toLowerCase();
+          const reader = new FileReader();
+          
+          showLoading(`正在解析 ${file.name}...`);
+          targetDataStore.name = file.name;
+          
+          reader.onload = (ev) => {
+            if (ext === 'srt') {
+              targetDataStore.subtitles = parseSRT(ev.target.result);
+              processAndDisplayData();
+            } else if (ext === 'ass') {
+              targetDataStore.subtitles = parseASS(ev.target.result);
+              processAndDisplayData();
+            } else if (ext === 'txt') {
+              targetDataStore.subtitles = parseTXT(ev.target.result);
+              processAndDisplayData();
+            } else if (ext === 'docx') {
+              parseDOCX(ev.target.result, subs => {
+                targetDataStore.subtitles = subs;
+                processAndDisplayData();
+              });
+            } else if (ext === 'pdf') {
+              parsePDF(ev.target.result, subs => {
+                targetDataStore.subtitles = subs;
+                processAndDisplayData();
+              });
+            } else {
+              showError('不支援的檔案格式');
+            }
+          };
+          
+          if (ext === 'docx' || ext === 'pdf') reader.readAsArrayBuffer(file);
+          else reader.readAsText(file, 'utf-8');
+        }
+
+        document.getElementById('fileInput1').addEventListener('change', function(e) {
+          handleFileChoose(e.target.files[0], file1Data, 1);
+        });
+
+        document.getElementById('fileInput2').addEventListener('change', function(e) {
+          handleFileChoose(e.target.files[0], file2Data, 2);
+        });
+        
+        // ==================== UI 渲染與事件 ====================
         function createSubtitleRowHTML(subtitle, index) {
-          const hasNote = notesData[index] ? 'has-note' : '';
           const noteContent = notesData[index] || '';
-          const noteHasContent = noteContent ? 'has-content' : '';
-          const escapedText = escapeHtml(subtitle.text || '');
-          const escapedNote = escapeHtml(noteContent);
+          const hasWrittenClass = noteContent ? 'has-written-note' : '';
+          const hasContentClass = noteContent ? 'has-content' : '';
+          
+          const escapedJapanese = escapeHtml(subtitle.japanese || '');
+          const escapedChinese = escapeHtml(subtitle.chinese || '');
+          
+          let japaneseHTML = `<div class="japanese-text" data-original="${escapeHtml(subtitle.japanese || '')}">${escapedJapanese}</div>`;
+          let chineseHTML = subtitle.chinese ? `<div class="chinese-text" data-original="${escapeHtml(subtitle.chinese || '')}">${escapedChinese}</div>` : '';
           
           return `<div class="row" data-index="${index}">
-              <div class="subtitle ${hasNote}">
-                <div class="text-box" data-original="${escapedText}">
-                  ${escapedText}
+              <div class="subtitle ${hasWrittenClass}">
+                <div class="text-box" data-original="${escapeHtml(subtitle.japanese || '')}">
+                  ${japaneseHTML} ${chineseHTML}
                 </div>
-                <div class="note-area ${hasNote}">
-                  <button class="add-note-btn" data-index="${index}">+</button>
-                  <div class="note-container ${hasNote}">
-                    <textarea class="note-box ${noteHasContent} ${hasNote ? 'show' : ''} ${hasNote ? 'activated' : ''}" data-index="${index}" placeholder="">${escapedNote}</textarea>
+                <div class="note-area">
+                  <div class="note-container">
+                    <textarea class="note-box ${hasContentClass}" data-index="${index}" placeholder="輸入筆記...">${escapeHtml(noteContent)}</textarea>
                   </div>
-                  <button class="close-note-btn" data-index="${index}">×</button>
                 </div>
               </div>
             </div>`;
         }
         
-        // ==================== 批量渲染所有字幕行 ====================
         function renderAllSubtitles(subtitles) {
           const container = document.getElementById('subtitles');
-          const totalRows = subtitles.length;
+          container.innerHTML = subtitles.map((sub, i) => createSubtitleRowHTML(sub, i)).join('');
           
-          // 清空容器
-          container.innerHTML = '';
-          
-          // 如果沒有字幕，直接返回
-          if (totalRows === 0) {
-            updateFileInfo('沒有字幕內容', 3000);
-            return;
-          }
-          
-          // 顯示加載進度
-          updateProgress(0, '開始渲染字幕...');
-          
-          // 一次性生成所有HTML
-          let html = '';
-          for (let i = 0; i < totalRows; i++) {
-            html += createSubtitleRowHTML(subtitles[i], i);
-          }
-          
-          // 一次性添加到DOM
-          container.innerHTML = html;
-          
-          // 更新進度
-          updateProgress(100, `已渲染 ${totalRows} 行字幕`);
-          
-          // 為所有筆記框和加號按鈕添加事件監聽器
-          setTimeout(() => {
-            const noteBoxes = container.querySelectorAll('.note-box');
-            const addNoteBtns = container.querySelectorAll('.add-note-btn');
-            const closeNoteBtns = container.querySelectorAll('.close-note-btn');
+          container.querySelectorAll('.note-box').forEach(noteBox => {
+            const index = parseInt(noteBox.dataset.index);
+            const row = noteBox.closest('.row');
+            const subtitleDiv = row.querySelector('.subtitle');
             
-            // 為加號按鈕添加事件
-            addNoteBtns.forEach((btn, i) => {
-              const index = parseInt(btn.dataset.index);
-              const subtitleDiv = btn.closest('.subtitle');
-              const noteArea = btn.closest('.note-area');
-              const noteContainer = noteArea.querySelector('.note-container');
-              const noteBox = noteArea.querySelector('.note-box');
-              const closeNoteBtn = noteArea.querySelector('.close-note-btn');
-              
-              setupAddNoteBtnEvents(btn, subtitleDiv, noteArea, noteContainer, noteBox, closeNoteBtn, index);
-            });
+            setTimeout(() => autoResizeTextarea(noteBox), 0);
             
-            // 為關閉按鈕添加事件
-            closeNoteBtns.forEach((btn, i) => {
-              const index = parseInt(btn.dataset.index);
-              const noteBox = btn.closest('.note-area').querySelector('.note-box');
-              
-              setupCloseNoteBtnEvents(btn, noteBox, index);
-            });
-            
-            // 為筆記框添加事件
-            noteBoxes.forEach((noteBox, i) => {
-              const index = parseInt(noteBox.dataset.index);
-              const subtitleDiv = noteBox.closest('.subtitle');
-              const textBox = subtitleDiv.querySelector('.text-box');
-              const noteArea = noteBox.closest('.note-area');
-              const noteContainer = noteArea.querySelector('.note-container');
-              const addNoteBtn = noteArea.querySelector('.add-note-btn');
-              const closeNoteBtn = noteArea.querySelector('.close-note-btn');
-              
-              setupNoteBoxEvents(noteBox, subtitleDiv, textBox, noteArea, noteContainer, addNoteBtn, closeNoteBtn, index);
-              
-              // 如果筆記框有內容，調整高度
-              if (noteBox.value && noteBox.value.trim()) {
-                // 使用setTimeout確保DOM已經完全渲染
-                setTimeout(() => {
-                  autoResizeTextarea(noteBox);
-                }, 10);
-              }
-              
-              // 如果筆記框有內容，顯示關閉按鈕
-              if (noteBox.value && noteBox.value.trim() && noteBox.classList.contains('show')) {
-                closeNoteBtn.classList.add('show');
-              }
-            });
-            
-            updateFileInfo(`已加載全部 ${totalRows} 行字幕`, 3000);
-          }, 0);
-        }
-        
-        // ==================== 設置加號按鈕事件 ====================
-        function setupAddNoteBtnEvents(btn, subtitleDiv, noteArea, noteContainer, noteBox, closeNoteBtn, index) {
-          btn.addEventListener('click', function() {
-            // 關閉當前打開的筆記框
-            closeCurrentNoteBox();
-            
-            // 顯示筆記框並聚焦
-            noteBox.classList.add('show', 'activated');
-            noteContainer.classList.add('has-note');
-            noteArea.classList.add('has-note');
-            subtitleDiv.classList.add('has-note');
-            noteBox.focus();
-            
-            // 隱藏加號按鈕，顯示關閉按鈕
-            btn.style.display = 'none';
-            closeNoteBtn.classList.add('show');
-            
-            // 設置為當前打開的筆記框
-            currentOpenNoteBox = noteBox;
-            
-            // 調整筆記框高度
-            setTimeout(() => {
-              autoResizeTextarea(noteBox);
-            }, 10);
-            
-            // 顯示提示
-            showGlobalStatus('筆記框已打開，可以拖曳文字或輸入內容', 2000);
-          });
-        }
-        
-        // ==================== 設置關閉按鈕事件 ====================
-        function setupCloseNoteBtnEvents(btn, noteBox, index) {
-          btn.addEventListener('click', function() {
-            // 關閉筆記框
-            const subtitleDiv = noteBox.closest('.subtitle');
-            const noteArea = noteBox.closest('.note-area');
-            const noteContainer = noteArea.querySelector('.note-container');
-            const addNoteBtn = noteArea.querySelector('.add-note-btn');
-            
-            const trimmedValue = noteBox.value.trim();
-            
-            // 保存筆記（如果有內容）
-            if (trimmedValue) {
-              notesData[index] = trimmedValue;
-              noteBox.classList.add('has-content');
-              subtitleDiv.classList.add('has-note');
-              noteArea.classList.add('has-note');
-              noteContainer.classList.add('has-note');
-              
-              // 筆記框保持顯示，但移除激活狀態
-              noteBox.classList.remove('activated');
-              noteBox.classList.add('show');
-              addNoteBtn.style.display = 'none';
-              btn.classList.remove('show');
-            } else {
-              // 沒有內容，完全關閉
-              delete notesData[index];
-              noteBox.classList.remove('has-content', 'show', 'activated');
-              subtitleDiv.classList.remove('has-note');
-              noteArea.classList.remove('has-note');
-              noteContainer.classList.remove('has-note');
-              
-              // 顯示加號按鈕，隱藏關閉按鈕
-              addNoteBtn.style.display = 'flex';
-              btn.classList.remove('show');
-            }
-            
-            // 如果這是當前打開的筆記框，清除引用
-            if (currentOpenNoteBox === noteBox) {
-              currentOpenNoteBox = null;
-            }
-            
-            // 更新筆記計數
-            updateNoteCount();
-            
-            showGlobalStatus('筆記框已關閉', 1500);
-          });
-        }
-        
-        // ==================== 設置筆記框事件 ====================
-        function setupNoteBoxEvents(noteBox, subtitleDiv, textBox, noteArea, noteContainer, addNoteBtn, closeNoteBtn, index) {
-          // 筆記框輸入時自動調整高度
-          noteBox.addEventListener('input', function() {
-            autoResizeTextarea(this);
-          });
-          
-          // 筆記框獲得焦點時
-          noteBox.addEventListener('focus', function() {
-            // 如果這不是當前打開的筆記框，先關閉之前的
-            if (currentOpenNoteBox && currentOpenNoteBox !== noteBox) {
-              closeCurrentNoteBox();
-            }
-            
-            // 標記為已激活
-            noteBox.classList.add('activated');
-            
-            // 設置為當前打開的筆記框
-            currentOpenNoteBox = noteBox;
-            
-            // 顯示關閉按鈕
-            closeNoteBtn.classList.add('show');
-            
-            // 獲得焦點時也調整一次
-            setTimeout(() => {
-              autoResizeTextarea(this);
-            }, 10);
-            
-            if (noteBox.value.trim()) {
-              noteBox.classList.remove('has-content');
-            }
-          });
-        
-          // 筆記框失去焦點時
-          noteBox.addEventListener('blur', debounce(function() {
-            // 只有在不是當前打開的筆記框時才處理blur事件
-            if (currentOpenNoteBox !== noteBox) {
-              const trimmedValue = noteBox.value.trim();
-              
-              // 保存筆記
-              if (trimmedValue) {
-                notesData[index] = trimmedValue;
+            const saveNote = () => {
+              const val = noteBox.value.trim();
+              if (val) {
+                notesData[index] = val;
                 noteBox.classList.add('has-content');
-                subtitleDiv.classList.add('has-note');
-                noteArea.classList.add('has-note');
-                noteContainer.classList.add('has-note');
-                
-                // 筆記框保持顯示
-                noteBox.classList.add('show');
-                addNoteBtn.style.display = 'none';
-                closeNoteBtn.classList.add('show');
-                
-                // 顯示保存狀態
-                showGlobalStatus(`第 ${index + 1} 行筆記已保存`, 1500);
+                subtitleDiv.classList.add('has-written-note');
               } else {
-                // 如果內容為空，檢查是否曾經被激活過
-                if (noteBox.classList.contains('activated')) {
-                  // 如果被激活過，但內容為空，只刪除筆記數據，但不隱藏筆記框
-                  delete notesData[index];
-                  noteBox.classList.remove('has-content');
-                  subtitleDiv.classList.remove('has-note');
-                  noteArea.classList.remove('has-note');
-                  noteContainer.classList.remove('has-note');
-                  
-                  // 但筆記框仍然顯示，只是沒有內容
-                  // 這樣用戶可以繼續拖曳文字或輸入
-                }
+                delete notesData[index];
+                noteBox.classList.remove('has-content');
+                subtitleDiv.classList.remove('has-written-note');
               }
-              
-              // 更新筆記計數
               updateNoteCount();
-            }
-          }, 500)); // 增加延遲時間，避免拖曳時觸發
-        
-          // 快捷鍵：Ctrl+Enter保存
-          noteBox.addEventListener('keydown', function(e) {
-            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-              e.preventDefault();
-              noteBox.blur(); // 觸發blur事件進行保存
-            }
-          });
-        
-          // 雙擊文字框也可以聚焦筆記框
-          textBox.addEventListener('dblclick', function() {
-            // 如果筆記框還沒顯示，先顯示
-            if (!noteBox.classList.contains('show')) {
-              addNoteBtn.click(); // 模擬點擊加號按鈕
-            } else {
-              noteBox.focus();
-              noteBox.selectionStart = noteBox.value.length;
-            }
-          });
-          
-          // 文字框支持拖曳選擇
-          textBox.addEventListener('mousedown', function(e) {
-            // 允許文字選擇
-            this.style.userSelect = 'text';
-          });
-          
-          // 筆記框支持拖放文字
-          noteBox.addEventListener('dragover', function(e) {
-            e.preventDefault(); // 允許拖放
-            this.style.borderColor = '#4CAF50';
-            this.style.boxShadow = '0 0 0 2px rgba(76, 175, 80, 0.5)';
-          });
-          
-          noteBox.addEventListener('dragleave', function(e) {
-            this.style.borderColor = '';
-            this.style.boxShadow = '';
-          });
-          
-          noteBox.addEventListener('drop', function(e) {
-            e.preventDefault();
-            this.style.borderColor = '';
-            this.style.boxShadow = '';
+            };
+
+            const debouncedSave = debounce(saveNote, 500);
             
-            // 獲取拖曳的文字
-            const text = e.dataTransfer.getData('text/plain');
-            if (text) {
-              // 插入文字到當前游標位置
-              const startPos = this.selectionStart;
-              const endPos = this.selectionEnd;
-              const currentValue = this.value;
-              
-              this.value = currentValue.substring(0, startPos) + text + currentValue.substring(endPos);
-              
-              // 觸發input事件以調整高度
-              this.dispatchEvent(new Event('input'));
-              
-              // 顯示關閉按鈕
-              closeNoteBtn.classList.add('show');
-              
-              // 顯示提示
-              showGlobalStatus('文字已拖曳到筆記框', 1500);
-            }
+            noteBox.addEventListener('input', function() { 
+              autoResizeTextarea(this); 
+              debouncedSave(); 
+            });
+
+            noteBox.addEventListener('blur', saveNote);
+            
+            noteBox.addEventListener('dragover', function(e) {
+              e.preventDefault();
+              this.style.borderColor = '#4CAF50';
+            });
+            noteBox.addEventListener('dragleave', function(e) {
+              this.style.borderColor = '';
+            });
+            noteBox.addEventListener('drop', function(e) {
+              e.preventDefault();
+              this.style.borderColor = '';
+              const text = e.dataTransfer.getData('text/plain');
+              if (text) {
+                const startPos = this.selectionStart;
+                const endPos = this.selectionEnd;
+                const currentValue = this.value;
+                this.value = currentValue.substring(0, startPos) + text + currentValue.substring(endPos);
+                this.dispatchEvent(new Event('input')); 
+                showGlobalStatus('文字已拖曳到筆記框', 1500);
+              }
+            });
           });
+          
+          if (!bilingualEnabled) document.body.classList.add('single-language');
+          updateFileInfo(`已加載 ${subtitles.length} 行字幕`, 4000);
         }
         
-        // ==================== 顯示字幕（快速全部加載） ====================
-        function displaySubtitles(subtitles, fileName) {
-          currentFileName = fileName || null;
-          allSubtitles = subtitles;
-          // 注意：這裡不清除notesData，這樣可以保留現有筆記
-          // notesData = {}; // 移除這行，不清除筆記
-          noteCount = 0;
+        // ==================== 搜尋與前後文邏輯 ====================
+        document.getElementById('searchBox').addEventListener('input', function(){
+          const q = this.value.trim();
+          const rows = Array.from(document.querySelectorAll('.row'));
           
-          const container = document.getElementById('subtitles');
-          
-          if (!subtitles || subtitles.length === 0) {
-            container.innerHTML = '';
-            updateFileInfo('沒有字幕內容', 3000);
+          if (!q) {
+            rows.forEach(row => {
+              const jp = row.querySelector('.japanese-text');
+              const zh = row.querySelector('.chinese-text');
+              if (jp && jp.dataset.original) jp.innerHTML = escapeHtml(jp.dataset.original);
+              if (zh && zh.dataset.original) zh.innerHTML = escapeHtml(zh.dataset.original);
+              row.style.display = '';
+              row.style.opacity = '1'; 
+            });
             return;
           }
           
-          showLoading(`正在加載 ${subtitles.length} 行字幕...`);
+          const regex = new RegExp('(' + escapeRegExp(q) + ')', 'gi');
+          let matchIndices = [];
           
-          // 使用setTimeout確保UI有機會更新
-          setTimeout(() => {
-            renderAllSubtitles(subtitles);
+          rows.forEach((row, idx) => {
+            const jp = row.querySelector('.japanese-text');
+            const zh = row.querySelector('.chinese-text');
+            let found = false;
             
-            // 更新匯出按鈕狀態
-            updateNoteCount();
-          }, 10);
-        }
-        
-        // ==================== 文件上傳處理 ====================
-        document.getElementById('fileInput').addEventListener('change', function(e) {
-          const file = e.target.files && e.target.files[0];
-          if (!file) return;
-          
-          const ext = (file.name.split('.').pop() || '').toLowerCase();
-          const reader = new FileReader();
-          
-          reader.onerror = () => {
-            showError('讀取檔案時發生錯誤');
-            updateProgress(0);
-          };
-          
-          reader.onload = (ev) => {
-            try {
-              currentFileName = file.name;
-              updateProgress(10, '開始處理文件...');
-              
-              if (ext === 'srt') {
-                const subtitles = parseSRT(ev.target.result);
-                displaySubtitles(subtitles, file.name);
-                updateProgress(100, 'SRT 解析完成');
-              } else if (ext === 'ass') {
-                const subtitles = parseASS(ev.target.result);
-                displaySubtitles(subtitles, file.name);
-                updateProgress(100, 'ASS 解析完成');
-              } else if (ext === 'txt') {
-                const subtitles = parseTXT(ev.target.result);
-                displaySubtitles(subtitles, file.name);
-                updateProgress(100, 'TXT 解析完成');
-              } else if (ext === 'docx') {
-                parseDOCX(ev.target.result, subs => {
-                  displaySubtitles(subs, file.name);
-                });
-              } else if (ext === 'pdf') {
-                parsePDF(ev.target.result, subs => {
-                  displaySubtitles(subs, file.name);
-                });
+            if (jp) {
+              const originalJp = jp.dataset.original || jp.textContent || '';
+              if (originalJp.match(regex)) {
+                jp.innerHTML = escapeHtml(originalJp).replace(regex, '<span class="highlight">$1</span>');
+                found = true;
               } else {
-                showError('不支援的檔案格式：' + ext);
-                updateProgress(0);
+                jp.innerHTML = escapeHtml(originalJp);
               }
-            } catch (err) {
-              showError('解析時發生錯誤：' + (err && err.message ? err.message : err));
-              updateProgress(0);
             }
-          };
+            
+            if (zh) {
+              const originalZh = zh.dataset.original || zh.textContent || '';
+              if (originalZh.match(regex)) {
+                zh.innerHTML = escapeHtml(originalZh).replace(regex, '<span class="highlight">$1</span>');
+                found = true;
+              } else {
+                zh.innerHTML = escapeHtml(originalZh);
+              }
+            }
+            
+            if (found) {
+              matchIndices.push(idx);
+            }
+          });
           
-          if (ext === 'docx' || ext === 'pdf') {
-            reader.readAsArrayBuffer(file);
-          } else {
-            reader.readAsText(file, 'utf-8');
+          let visibleIndices = new Set();
+          matchIndices.forEach(idx => {
+            if (idx > 0) visibleIndices.add(idx - 1); 
+            visibleIndices.add(idx);                  
+            if (idx < rows.length - 1) visibleIndices.add(idx + 1); 
+          });
+          
+          rows.forEach((row, idx) => {
+            if (visibleIndices.has(idx)) {
+              row.style.display = '';
+              if (!matchIndices.includes(idx)) {
+                row.style.opacity = '0.5';
+              } else {
+                row.style.opacity = '1';
+              }
+            } else {
+              row.style.display = 'none';
+              row.style.opacity = '1';
+            }
+          });
+          
+          if (matchIndices.length > 0) {
+            showGlobalStatus(`找到 ${matchIndices.length} 個結果 (已展開前後文)`, 3000);
+            setTimeout(() => {
+              rows[matchIndices[0]].scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 100);
+          } else if (q) {
+            showGlobalStatus(`未找到匹配內容`, 2000);
           }
         });
-        
-        // ==================== 導入筆記功能 ====================
-        document.getElementById('importBtn').addEventListener('click', function() {
-          // 檢查是否已加載字幕
-          if (allSubtitles.length === 0) {
-            alert('請先加載字幕文件，再導入筆記');
-            return;
-          }
+
+        // ==================== 匯入/匯出與其他功能 ====================
+        document.getElementById('bilingualBtn').addEventListener('click', function() {
+          bilingualEnabled = !bilingualEnabled;
+          this.textContent = bilingualEnabled ? '單語顯示' : '雙語顯示';
+          document.body.classList.toggle('single-language', !bilingualEnabled);
           
+          // 切換顯示模式時，強制重新同步高度
+          document.querySelectorAll('.note-box').forEach(noteBox => autoResizeTextarea(noteBox));
+        });
+
+        document.getElementById('importBtn').addEventListener('click', () => {
+          if(processedSubtitles.length === 0) return alert('請先上傳最少一個字幕檔');
           document.getElementById('importFileInput').click();
         });
-        
+
         document.getElementById('importFileInput').addEventListener('change', function(e) {
-          const file = e.target.files && e.target.files[0];
+          const file = e.target.files[0];
           if (!file) return;
-          
-          // 檢查是否是HTML文件
-          const ext = (file.name.split('.').pop() || '').toLowerCase();
-          if (ext !== 'html') {
-            showError('請選擇HTML文件（導出的筆記文件）');
-            return;
-          }
-          
           const reader = new FileReader();
-          
-          reader.onerror = () => {
-            showError('讀取筆記文件時發生錯誤');
-          };
           
           reader.onload = (ev) => {
             try {
-              const htmlContent = ev.target.result;
-              
-              // 使用DOMParser解析HTML
-              const parser = new DOMParser();
-              const doc = parser.parseFromString(htmlContent, 'text/html');
-              
-              // 檢查是否是我們的導出格式
+              const doc = new DOMParser().parseFromString(ev.target.result, 'text/html');
               const exportItems = doc.querySelectorAll('.export-item');
               
               if (exportItems.length === 0) {
-                showError('無法識別的筆記格式，請確保這是從本工具導出的筆記文件');
+                showError('無法識別的筆記格式，請確保這是從本工具匯出的筆記文件');
                 return;
               }
-              
-              // 開始導入筆記
+
               let importedCount = 0;
               let skippedCount = 0;
-              
+
               exportItems.forEach(item => {
-                // 獲取字幕文本和筆記內容
                 const subtitleEl = item.querySelector('.export-note-subtitle');
                 const noteEl = item.querySelector('.export-note-content');
                 
                 if (subtitleEl && noteEl) {
-                  const subtitleText = subtitleEl.textContent.trim();
+                  const subText = subtitleEl.textContent.trim();
                   const noteText = noteEl.textContent.trim();
                   
-                  if (subtitleText && noteText) {
-                    // 在當前字幕中查找匹配的行
-                    const matchIndex = allSubtitles.findIndex(sub => sub.text === subtitleText);
+                  if (subText && noteText) {
+                    const matchIdx = processedSubtitles.findIndex(s => {
+                      const combinedTitle1 = s.chinese ? `${s.japanese} | ${s.chinese}` : s.japanese;
+                      const combinedTitle2 = s.chinese ? `${s.chinese} | ${s.japanese}` : s.japanese;
+                      return combinedTitle1 === subText || combinedTitle2 === subText || s.japanese === subText || s.originalText === subText;
+                    });
                     
-                    if (matchIndex !== -1) {
-                      // 找到匹配，導入筆記
-                      notesData[matchIndex] = noteText;
+                    if (matchIdx !== -1) {
+                      notesData[matchIdx] = noteText;
                       importedCount++;
                     } else {
                       skippedCount++;
@@ -1672,160 +1281,49 @@
                 }
               });
               
-              // 更新UI
               if (importedCount > 0) {
-                // 重新渲染所有字幕行，以顯示導入的筆記
-                renderAllSubtitles(allSubtitles);
+                renderAllSubtitles(processedSubtitles);
                 updateNoteCount();
-                
-                showGlobalStatus(`成功導入 ${importedCount} 條筆記${skippedCount > 0 ? `，${skippedCount} 條未找到匹配字幕` : ''}`, 4000);
+                showGlobalStatus(`成功導入 ${importedCount} 條筆記${skippedCount > 0 ? `，${skippedCount} 條未匹配` : ''}`, 4000);
               } else {
                 showGlobalStatus('未成功導入任何筆記，請檢查字幕文件是否匹配', 3000);
               }
-              
             } catch (err) {
-              showError('解析筆記文件時發生錯誤：' + (err && err.message ? err.message : err));
+              showError('解析筆記文件時發生錯誤');
             }
           };
-          
           reader.readAsText(file, 'utf-8');
           
-          // 清空文件輸入，以便可以再次選擇同一個文件
-          e.target.value = '';
+          this.value = '';
         });
-        
-        // ==================== 搜索功能 ====================
-        document.getElementById('searchBox').addEventListener('input', function(){
-          const q = this.value.trim();
-          const rows = Array.from(document.querySelectorAll('.row'));
+
+        document.getElementById('exportBtn').addEventListener('click', () => {
+          const notes = Object.entries(notesData).filter(([i, n]) => n.trim());
+          const items = notes.map(([idx, note], i) => {
+            const s = processedSubtitles[idx];
+            const title = s.chinese ? `${s.japanese} | ${s.chinese}` : s.japanese;
+            return `<div class="export-item">
+              <div class="export-header"><div class="export-number">${i+1}.</div><div class="export-note-subtitle">${escapeHtml(title)}</div></div>
+              <div class="export-note-content">${escapeHtml(note)}</div>
+            </div><hr/>`;
+          }).join('');
           
-          if (!q) {
-            // 清空搜索，恢复所有行
-            rows.forEach(row => {
-              const textDiv = row.querySelector('.subtitle .text-box'); // 改为 .text-box
-              if (textDiv && textDiv.dataset.original) {
-                textDiv.innerHTML = escapeHtml(textDiv.dataset.original);
-              }
-              row.style.display = '';
-            });
-            // 隐藏搜索统计
-            const stats = document.getElementById('searchStats');
-            if (stats) stats.classList.remove('show');
-            return;
-          }
-          
-          const regex = new RegExp('(' + escapeRegExp(q) + ')', 'gi');
-          let matchCount = 0;
-          let firstMatch = null;
-          
-          rows.forEach((row, idx) => {
-            const textDiv = row.querySelector('.subtitle .text-box'); // 改为 .text-box
-            if (!textDiv) return;
-            
-            const original = textDiv.dataset.original || textDiv.textContent || '';
-            
-            if (original.match(regex)) {
-              textDiv.innerHTML = escapeHtml(original).replace(regex, '<span class="highlight">$1</span>');
-              row.style.display = '';
-              matchCount++;
-              
-              if (firstMatch === null) {
-                firstMatch = row;
-              }
-              
-              // 滚动到第一个匹配项
-              if (idx === 0) {
-                setTimeout(() => {
-                  row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }, 100);
-              }
-            } else {
-              row.style.display = 'none';
-            }
-          });
-          
-          // 显示搜索统计（我的版本的功能）
-          if (matchCount > 0) {
-            showGlobalStatus(`找到 ${matchCount} 個匹配結果`, 3000);
-          } else if (q) {
-            showGlobalStatus(`未找到匹配內容`, 2000);
-          }
-        });
-        
-        // ==================== 導出功能 ====================
-        document.getElementById('exportBtn').addEventListener('click', function() {
-          const notesWithContent = Object.entries(notesData)
-            .filter(([index, note]) => note && note.trim() !== '')
-            .sort(([a], [b]) => a - b);
-          
-          if (notesWithContent.length === 0) {
-            alert('沒有筆記可匯出');
-            return;
-          }
-          
-          const itemsHtml = notesWithContent.map(([index, note], i) => {
-            const num = i + 1;
-            const subtitle = allSubtitles[index];
-            const subtitleText = subtitle ? subtitle.text : '';
-            
-            return `
-              <div class="export-item">
-                <div class="export-header">
-                  <div class="export-number">${num}.</div>
-                  <div class="export-note-subtitle">${escapeHtml(subtitleText)}</div>
-                </div>
-                <div class="export-note-content">${escapeHtml(note.trim())}</div>
-              </div>
-            `;
-          }).join('\n<hr/>\n');
-          
-          const html = `<!doctype html>
-            <html lang="zh">
-            <head>
-              <meta charset="utf-8">
-              <title>${escapeHtml(currentFileName || 'notes')} - 筆記匯出</title>
-              <style>
-                body{font-family:Arial,sans-serif;padding:20px;color:#222;background:#fff}
-                .export-item{margin-bottom:20px}
-                .export-header{display:flex;align-items:flex-start;gap:10px;margin-bottom:8px}
-                .export-number{color:#333;min-width:28px;font-weight:bold}
-                .export-note-subtitle{color:#222;font-weight:normal;line-height:1.4}
-                .export-note-content{color:#e67e22;margin:0;white-space:pre-wrap;line-height:1.5}
-                hr{border:none;border-top:1px solid #eee;margin:20px 0}
-              </style>
-            </head>
-            <body>
-              <h2>${escapeHtml(currentFileName || '字幕筆記')}</h2>
-              <p>共 ${notesWithContent.length} 條筆記，導出時間: ${new Date().toLocaleString()}</p>
-              ${itemsHtml}
-            </body>
-            </html>`;
+          const html = `<!doctype html><html><head><meta charset="utf-8"><style>body{padding:20px;font-family:sans-serif;}.export-item{margin:15px 0;}.export-note-content{color:#e67e22;white-space:pre-wrap;}</style></head>
+          <body><h2>${escapeHtml(currentFileName)} - 筆記匯出</h2>${items}</body></html>`;
           
           const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-          const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
-          a.href = url;
-          a.download = `${(currentFileName || 'notes').replace(/\.[^/.]+$/, "")}_筆記導出.html`;
-          document.body.appendChild(a);
+          a.href = URL.createObjectURL(blob);
+          a.download = `${currentFileName.split('.')[0]}_筆記導出.html`;
           a.click();
-          a.remove();
-          URL.revokeObjectURL(url);
-          
-          showGlobalStatus(`已導出 ${notesWithContent.length} 條筆記`, 3000);
         });
         
-        // ==================== 頁面離開確認 ====================
         window.addEventListener('beforeunload', function(e) {
-          if (noteCount > 0) {
-            e.preventDefault();
-            e.returnValue = `您有 ${noteCount} 條未導出的筆記，確定要離開嗎？`;
-            return e.returnValue;
-          }
+          if (noteCount > 0) { e.preventDefault(); e.returnValue = '有未匯出的筆記，確定離開？'; }
         });
         
-        // ==================== 初始化 ====================
-        document.addEventListener('DOMContentLoaded', function() {
-          updateFileInfo('請上傳字幕文件（支援 .srt, .ass, .txt, .docx, .pdf）', 5000);
+        document.addEventListener('DOMContentLoaded', () => {
+          updateFileInfo('請在上面分別放入「檔案1」與「檔案2」，系統將自動合併。', 5000);
         });
     </script>
 </body>
